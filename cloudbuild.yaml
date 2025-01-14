@@ -1,0 +1,9 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'us-west1-docker.pkg.dev/aim-system-391322/cloud-run-source-deploy/mom-test-sim/momtestsim:$COMMIT_SHA', '.', '-f', 'Dockerfile']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-west1-docker.pkg.dev/aim-system-391322/cloud-run-source-deploy/mom-test-sim/momtestsim:$COMMIT_SHA']
+
+images:
+  - 'us-west1-docker.pkg.dev/aim-system-391322/cloud-run-source-deploy/mom-test-sim/momtestsim:$COMMIT_SHA'
