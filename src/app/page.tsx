@@ -1,5 +1,8 @@
+"use client";
+
 import React from 'react';
 import { ArrowRight, Check, MessageCircle, BarChart3, Settings2 } from 'lucide-react';
+import RealtimeChat from '../components/RealtimeChat'
 
 export default function Home() {
   return (
@@ -31,29 +34,36 @@ export default function Home() {
         {/* Hero Section */}
         <section className="relative py-20 overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center">
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-                Master Customer Interviews with
-                <span className="block text-blue-600">AI-Powered Practice</span>
-              </h2>
-              <p className="max-w-2xl mx-auto text-lg text-gray-600 mb-8">
-                Practice and perfect your customer interview skills with our AI-driven simulator.
-                Get real-time feedback and improve your technique with The Mom Test principles.
-              </p>
-              <div className="flex justify-center gap-4">
-                <a
-                  href="/signup"
-                  className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 transition-colors"
-                >
-                  Get Started Free
-                  <ArrowRight className="w-4 h-4" />
-                </a>
-                <a
-                  href="/demo"
-                  className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-6 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Watch Demo
-                </a>
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              {/* Left side - Text content */}
+              <div>
+                <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+                  Master Customer Interviews with
+                  <span className="block text-blue-600">AI-Powered Practice</span>
+                </h2>
+                <p className="text-lg text-gray-600 mb-8">
+                  Practice and perfect your customer interview skills with our AI-driven simulator.
+                  Get real-time feedback and improve your technique with The Mom Test principles.
+                </p>
+                <div className="flex gap-4">
+                  <button
+                    className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 transition-colors"
+                    onClick={() => {
+                      const chatSection = document.getElementById('chat-section');
+                      chatSection?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                  >
+                    Try it now
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Right side - Chat Interface */}
+              <div id="chat-section" className="relative">
+                <div className="bg-white rounded-2xl shadow-xl p-1">
+                  <RealtimeChat />
+                </div>
               </div>
             </div>
           </div>
