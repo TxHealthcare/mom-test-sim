@@ -6,14 +6,11 @@ import RealtimeChat from '../components/RealtimeChat'
 import { Button } from '@/components/ui/button';
 import {
   NavigationMenu,
-  NavigationMenuContent,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-  NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
-import Link from 'next/link';
 
 export default function Home() {
   return (
