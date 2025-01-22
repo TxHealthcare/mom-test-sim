@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { Button } from "@/components/ui/button";
 
 declare global {
   interface Window {
@@ -289,23 +290,21 @@ export default function RealtimeChat() {
           {isConnected ? (
             <div className="flex items-center gap-2">
               <span className="text-green-600">Connected</span>
-              <button 
-                className="bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors"
+              <Button 
+                variant="destructive"
+                size="sm"
                 onClick={handleStopChat}
               >
                 Stop
-              </button>
+              </Button>
             </div>
           ) : (
-            <button 
-              className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-full font-semibold
-                hover:translate-y-[-1px] transition-all shadow-md hover:shadow-lg disabled:from-blue-300 
-                disabled:to-blue-400 disabled:cursor-not-allowed disabled:transform-none"
+            <Button 
               onClick={initializeConnection}
               disabled={isConnecting}
             >
               {isConnecting ? 'Connecting...' : 'Start Practice'}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -345,9 +344,10 @@ export default function RealtimeChat() {
       </div>
 
       <div className="p-4 border-t border-gray-200">
-        <button
-          className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium transition-all
-            hover:bg-blue-700 hover:translate-y-[-1px] disabled:bg-blue-300 disabled:cursor-not-allowed"
+        <Button
+          className="w-full"
+          variant="default"
+          size="lg"
           onClick={() => {
             sendMessage({
               type: "response.create",
@@ -360,7 +360,7 @@ export default function RealtimeChat() {
           disabled={!isConnected}
         >
           Ask About Business Idea
-        </button>
+        </Button>
       </div>
     </div>
   );
