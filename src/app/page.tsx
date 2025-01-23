@@ -3,6 +3,14 @@
 import React from 'react';
 import { ArrowRight, Check, MessageCircle, BarChart3, Settings2 } from 'lucide-react';
 import RealtimeChat from '../components/RealtimeChat'
+import { Button } from '@/components/ui/button';
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  navigationMenuTriggerStyle,
+} from "@/components/ui/navigation-menu";
 
 export default function Home() {
   return (
@@ -14,17 +22,34 @@ export default function Home() {
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
               Mom Test Simulator
             </h1>
-            <nav className="hidden md:flex gap-8">
-              <a href="#features" className="text-gray-600 hover:text-blue-600 transition-colors">
-                Features
-              </a>
-              <a href="#about" className="text-gray-600 hover:text-blue-600 transition-colors">
-                About
-              </a>
-              <a href="#get-started" className="text-gray-600 hover:text-blue-600 transition-colors">
-                Get Started
-              </a>
-            </nav>
+            <NavigationMenu>
+              <NavigationMenuList>
+                <NavigationMenuItem>
+                  <NavigationMenuLink
+                    href="#features"
+                    className={navigationMenuTriggerStyle()}
+                  >
+                    Features
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuLink
+                    href="#about"
+                    className={navigationMenuTriggerStyle()}
+                  >
+                    About
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <NavigationMenuLink
+                    href="#get-started"
+                    className={navigationMenuTriggerStyle()}
+                  >
+                    Get Started
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+              </NavigationMenuList>
+            </NavigationMenu>
           </div>
         </div>
       </header>
@@ -46,16 +71,15 @@ export default function Home() {
                   Get real-time feedback and improve your technique with The Mom Test principles.
                 </p>
                 <div className="flex gap-4">
-                  <button
-                    className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 transition-colors"
+                  <Button 
+                    size="lg"
                     onClick={() => {
                       const chatSection = document.getElementById('chat-section');
                       chatSection?.scrollIntoView({ behavior: 'smooth' });
                     }}
                   >
-                    Try it now
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
+                    Try it now <ArrowRight />
+                  </Button>
                 </div>
               </div>
               
@@ -145,18 +169,20 @@ export default function Home() {
               Start practicing with our AI simulator today
             </p>
             <div className="flex justify-center gap-4">
-              <a
-                href="/signup"
-                className="rounded-full bg-white text-blue-600 px-8 py-3 font-semibold hover:bg-blue-50 transition-colors"
+              <Button 
+                variant="secondary" 
+                size="lg"
+                asChild
               >
-                Get Started Free
-              </a>
-              <a
-                href="/learn-more"
-                className="rounded-full border border-white text-white px-8 py-3 font-semibold hover:bg-blue-700 transition-colors"
+                <a href="/signup">Get Started Free</a>
+              </Button>
+              <Button 
+                variant="secondary" 
+                size="lg"
+                asChild
               >
-                Learn More
-              </a>
+                <a href="/learn-more">Learn More</a>
+              </Button>
             </div>
           </div>
         </section>
@@ -169,33 +195,33 @@ export default function Home() {
             <div>
               <h3 className="font-semibold mb-4">Product</h3>
               <ul className="space-y-2">
-                <li><a href="#" className="text-gray-600 hover:text-blue-600">Features</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-blue-600">Pricing</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-blue-600">Demo</a></li>
+                <li><Button variant="link" asChild><a href="#">Features</a></Button></li>
+                <li><Button variant="link" asChild><a href="#">Pricing</a></Button></li>
+                <li><Button variant="link" asChild><a href="#">Demo</a></Button></li>
               </ul>
             </div>
             <div>
               <h3 className="font-semibold mb-4">Resources</h3>
               <ul className="space-y-2">
-                <li><a href="#" className="text-gray-600 hover:text-blue-600">Documentation</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-blue-600">Guides</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-blue-600">Support</a></li>
+                <li><Button variant="link" asChild><a href="#">Documentation</a></Button></li>
+                <li><Button variant="link" asChild><a href="#">Guides</a></Button></li>
+                <li><Button variant="link" asChild><a href="#">Support</a></Button></li>
               </ul>
             </div>
             <div>
               <h3 className="font-semibold mb-4">Company</h3>
               <ul className="space-y-2">
-                <li><a href="#" className="text-gray-600 hover:text-blue-600">About</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-blue-600">Blog</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-blue-600">Careers</a></li>
+                <li><Button variant="link" asChild><a href="#">About</a></Button></li>
+                <li><Button variant="link" asChild><a href="#">Blog</a></Button></li>
+                <li><Button variant="link" asChild><a href="#">Careers</a></Button></li>
               </ul>
             </div>
             <div>
               <h3 className="font-semibold mb-4">Legal</h3>
               <ul className="space-y-2">
-                <li><a href="#" className="text-gray-600 hover:text-blue-600">Privacy</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-blue-600">Terms</a></li>
-                <li><a href="#" className="text-gray-600 hover:text-blue-600">Security</a></li>
+                <li><Button variant="link" asChild><a href="#">Privacy</a></Button></li>
+                <li><Button variant="link" asChild><a href="#">Terms</a></Button></li>
+                <li><Button variant="link" asChild><a href="#">Security</a></Button></li>
               </ul>
             </div>
           </div>

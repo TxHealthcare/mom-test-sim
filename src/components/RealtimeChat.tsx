@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import './RealtimeChat.css';
+import { Button } from "@/components/ui/button";
 
 declare global {
   interface Window {
@@ -259,12 +259,18 @@ export default function RealtimeChat() {
 
   const MessageDisplay = ({ message }: { message: Message }) => {
     return (
-      <div className={`message ${message.type}`}>
-        <div className="message-role">
+      <div className={`flex flex-col p-4 my-3 rounded-xl shadow-sm max-w-[85%] ${
+        message.type === 'sent' 
+          ? 'ml-auto bg-blue-50 border border-blue-100 relative' 
+          : 'mr-auto bg-green-50 border border-green-100 relative'
+      }`}>
+        <div className={`text-xs font-semibold mb-1 ${
+          message.type === 'sent' ? 'text-blue-700' : 'text-green-700'
+        }`}>
           {message.type === 'sent' ? 'You' : 'AI Assistant'}
         </div>
         <div className="message-content">{message.content}</div>
-        <div className="message-timestamp">
+        <div className="text-xs text-gray-500 mt-1">
           {message.timestamp.toLocaleTimeString()}
         </div>
       </div>
@@ -272,44 +278,44 @@ export default function RealtimeChat() {
   };
 
   return (
-    <div className="realtime-chat-container">
-      <div className="realtime-chat-header">
+    <div className="w-full h-[600px] bg-white rounded-xl shadow-lg flex flex-col">
+      <div className="flex justify-between items-center p-4 border-b border-gray-200">
         <div className="flex items-center gap-2">
-          <h2>AI Interview Practice</h2>
+          <h2 className="text-xl font-semibold m-0">AI Interview Practice</h2>
           {isMicActive && (
-            <span className="pulse-dot" title="Microphone active" />
+            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Microphone active" />
           )}
         </div>
-        <div className="connection-status">
+        <div className="flex items-center">
           {isConnected ? (
             <div className="flex items-center gap-2">
-              <span className="status-connected">Connected</span>
-              <button 
-                className="stop-button"
+              <span className="text-green-600">Connected</span>
+              <Button 
+                variant="destructive"
+                size="sm"
                 onClick={handleStopChat}
               >
                 Stop
-              </button>
+              </Button>
             </div>
           ) : (
-            <button 
-              className="connect-button"
+            <Button 
               onClick={initializeConnection}
               disabled={isConnecting}
             >
               {isConnecting ? 'Connecting...' : 'Start Practice'}
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
       {error && (
-        <div className="error-message">
+        <div className="bg-red-100 text-red-600 p-3 mx-4 my-2 rounded-lg">
           {error}
         </div>
       )}
 
-      <div className="messages-container">
+      <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
         {messages.length === 0 && !isConnected && (
           <div className="text-center text-gray-500 mt-8">
             Click Start Practice to begin your interview practice session
@@ -319,20 +325,29 @@ export default function RealtimeChat() {
           <MessageDisplay key={index} message={msg} />
         ))}
         {currentMessage && (
-          <div className={`message ${currentMessage.startsWith('You:') ? 'sent' : 'received'}`}>
-            <div className="message-role">
+          <div className={`flex flex-col p-4 my-3 rounded-xl shadow-sm max-w-[85%] ${
+            currentMessage.startsWith('You:') 
+              ? 'ml-auto bg-blue-50 border border-blue-100' 
+              : 'mr-auto bg-green-50 border border-green-100'
+          }`}>
+            <div className={`text-xs font-semibold mb-1 ${
+              currentMessage.startsWith('You:') ? 'text-blue-700' : 'text-green-700'
+            }`}>
               {currentMessage.startsWith('You:') ? 'You' : 'AI Assistant'}
             </div>
-            <div className="message-content typing">
+            <div className="relative">
               {currentMessage}
+              <span className="animate-pulse ml-1">▋</span>
             </div>
           </div>
         )}
       </div>
 
-      <div className="controls">
-        <button
-          className="send-button"
+      <div className="p-4 border-t border-gray-200">
+        <Button
+          className="w-full"
+          variant="default"
+          size="lg"
           onClick={() => {
             sendMessage({
               type: "response.create",
@@ -345,7 +360,7 @@ export default function RealtimeChat() {
           disabled={!isConnected}
         >
           Ask About Business Idea
-        </button>
+        </Button>
       </div>
     </div>
   );
