@@ -1,6 +1,12 @@
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'us-west1-docker.pkg.dev/aim-system-391322/cloud-run-source-deploy/mom-test-sim/momtestsim:$COMMIT_SHA', '.', '-f', 'Dockerfile']
+    args: [
+      'build',
+      '--build-arg', 'NEXT_PUBLIC_SUPABASE_URL=${_NEXT_PUBLIC_SUPABASE_URL}',
+      '--build-arg', 'NEXT_PUBLIC_SUPABASE_ANON_KEY=${_NEXT_PUBLIC_SUPABASE_ANON_KEY}',
+      '--build-arg', 'NEXT_PUBLIC_GOOGLE_CLIENT_ID=${_NEXT_PUBLIC_GOOGLE_CLIENT_ID}',
+      '-t', 'us-west1-docker.pkg.dev/aim-system-391322/cloud-run-source-deploy/mom-test-sim/momtestsim:$COMMIT_SHA', 
+      '.', '-f', 'Dockerfile']
 
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'us-west1-docker.pkg.dev/aim-system-391322/cloud-run-source-deploy/mom-test-sim/momtestsim:$COMMIT_SHA']
