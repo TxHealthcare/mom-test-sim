@@ -1,11 +1,4 @@
-steps:
-  - name: 'ubuntu'
-    entrypoint: '/bin/bash'
-    args:
-      - -c
-      - |
-        echo "DEBUG: _NEXT_PUBLIC_SUPABASE_URL='${_NEXT_PUBLIC_SUPABASE_URL}'"
-  
+steps:  
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - build
