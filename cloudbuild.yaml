@@ -17,5 +17,17 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'us-west1-docker.pkg.dev/aim-system-391322/cloud-run-source-deploy/mom-test-sim/momtestsim:$COMMIT_SHA']
 
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    args:
+      - run
+      - services
+      - update
+      - momtestsim
+      - --platform=managed
+      - --image=us-west1-docker.pkg.dev/aim-system-391322/cloud-run-source-deploy/mom-test-sim/momtestsim:$COMMIT_SHA
+      - --region=us-west1
+      - --quiet
+    entrypoint: gcloud
+
 images:
   - 'us-west1-docker.pkg.dev/aim-system-391322/cloud-run-source-deploy/mom-test-sim/momtestsim:$COMMIT_SHA'
