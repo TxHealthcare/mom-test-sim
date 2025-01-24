@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { RefObject } from "react";
 
-export async function startRealtimeSession(audioStream: MediaStream) {
-    let peerConnection: RTCPeerConnection | null = null;
+// Function accpets active RTCPeerConnection and adds OAI to RTC.
+export async function startRealtimeSession(rtcPeerConnection: RefObject<RTCPeerConnection>) {
     let dataChannel: RTCDataChannel | null = null;
 
     try {
@@ -9,20 +9,11 @@ export async function startRealtimeSession(audioStream: MediaStream) {
         const data = await tokenResponse.json();
         const EPHEMERAL_KEY = data.client_secret.value;
 
-        peerConnection = new RTCPeerConnection();
 
-        const audioEl = document.createElement("audio");
-        audioEl.autoplay = true;
-        peerConnection.ontrack = (e) => {
-            audioEl.srcObject = e.streams[0];
-        };
+        dataChannel = rtcPeerConnection.current.createDataChannel("oai-events");
 
-        peerConnection.addTrack(audioStream.getTracks()[0]);
-
-        dataChannel = peerConnection.createDataChannel("oai-events");
-
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
+        const offer = await rtcPeerConnection.current.createOffer();
+        await rtcPeerConnection.current.setLocalDescription(offer);
 
         const baseUrl = "https://api.openai.com/v1/realtime";
         const model = "gpt-4o-realtime-preview-2024-12-17";
@@ -41,12 +32,12 @@ export async function startRealtimeSession(audioStream: MediaStream) {
             sdp: await sdpResponse.text(),
         };
 
-        await peerConnection.setRemoteDescription(answer);
+        await rtcPeerConnection.current.setRemoteDescription(answer);
     } catch (error) {
         console.error("Error starting realtime session:", error);
     } 
 
-    return { peerConnection, dataChannel };
+    return { dataChannel };
 }
 
 export function endRealtimeSession(peerConnection: RTCPeerConnection | null, dataChannel: RTCDataChannel | null) {
@@ -56,10 +47,12 @@ export function endRealtimeSession(peerConnection: RTCPeerConnection | null, dat
         }
 
         if (peerConnection) {
-            peerConnection.getSenders().forEach(sender => {
-                peerConnection.removeTrack(sender);
-            });
-            peerConnection.close();
+            if (peerConnection.signalingState !== 'closed') {
+                peerConnection.getSenders().forEach(sender => {
+                    peerConnection.removeTrack(sender);
+                });
+                peerConnection.close();
+            }
         }
     } catch (error) {
         console.error("Error ending realtime session:", error);
