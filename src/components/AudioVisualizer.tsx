@@ -4,7 +4,7 @@ import { RefObject, useEffect, useRef } from 'react';
 import AudioMotionAnalyzer from 'audiomotion-analyzer';
 
 interface AudioVisualizerProps {
-  peerConnection: RefObject<RTCPeerConnection>;
+  peerConnection: RTCPeerConnection;
 }
 
 export default function AudioVisualizer({ peerConnection }: AudioVisualizerProps) {
@@ -13,10 +13,11 @@ export default function AudioVisualizer({ peerConnection }: AudioVisualizerProps
   const mergerRef = useRef<ChannelMergerNode | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current || !peerConnection.current) return;
+    if (!containerRef.current) return;
 
     // Initialize analyzer first to use its AudioContext
     analyzerRef.current = new AudioMotionAnalyzer(containerRef.current, {
+      connectSpeakers: false,
       height: containerRef.current.clientHeight,
       width: containerRef.current.clientWidth,
       mode: 3,
@@ -53,7 +54,7 @@ export default function AudioVisualizer({ peerConnection }: AudioVisualizerProps
 
   // Handle track changes
   useEffect(() => {
-    if (!analyzerRef.current || !mergerRef.current || !peerConnection.current) return;
+    if (!analyzerRef.current || !mergerRef.current) return;
 
     const audioCtx = analyzerRef.current.audioCtx;
 
@@ -67,11 +68,11 @@ export default function AudioVisualizer({ peerConnection }: AudioVisualizerProps
     };
 
     // Connect existing tracks
-    peerConnection.current.getSenders().forEach(sender => {
+    peerConnection.getSenders().forEach(sender => {
       if (sender.track) connectTrack(sender.track);
     });
 
-    peerConnection.current.getReceivers().forEach(receiver => {
+    peerConnection.getReceivers().forEach(receiver => {
       if (receiver.track) connectTrack(receiver.track);
     });
 
@@ -82,20 +83,20 @@ export default function AudioVisualizer({ peerConnection }: AudioVisualizerProps
 
     const handleNegotiation = () => {
       // Reconnect all current tracks
-      peerConnection.current?.getSenders().forEach(sender => {
+      peerConnection?.getSenders().forEach(sender => {
         if (sender.track) connectTrack(sender.track);
       });
     };
 
-    peerConnection.current.ontrack = handleTrack;
-    peerConnection.current.onnegotiationneeded = handleNegotiation;
+    peerConnection.ontrack = handleTrack;
+    peerConnection.onnegotiationneeded = handleNegotiation;
 
     // Debug logging
     console.log('Audio tracks:', {
-      senders: peerConnection.current.getSenders().length,
-      receivers: peerConnection.current.getReceivers().length
+      senders: peerConnection.getSenders().length,
+      receivers: peerConnection.getReceivers().length
     });
-  }, [peerConnection, peerConnection.current?.getSenders().length]);
+  }, [peerConnection, peerConnection?.getSenders().length]);
 
   return (
     <div 

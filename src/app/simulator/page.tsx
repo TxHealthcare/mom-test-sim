@@ -15,16 +15,81 @@ const AudioVisualizer = dynamic(() => import('@/components/AudioVisualizer'), {
   ssr: false
 });
 
+interface RealtimeEvent {
+  type: string;
+  response?: {
+    modalities: string[];
+    instructions: string;
+    content?: string;
+  };
+  event_id?: string;
+  response_id?: string;
+  delta?: string;
+  audio_data?: Uint8Array;
+  transcript?: string;
+  input_audio_transcription?: string;
+  text?: string;
+  output?: Array<{
+    content: Array<{
+      type: string;
+      transcript?: string;
+    }>;
+  }>;
+  [key: string]: unknown;
+}
+
 export default function SimulatorPage() {
-  const peerConnection = useRef<RTCPeerConnection>(new RTCPeerConnection());
+  const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
   const [permissionError, setPermissionError] = useState<string | null>("Enable your microphone to start recording");
 
+  const handleRecordingToggle = async () => {
+    setPermissionError(null);
+    if (!isRecording) {
+        if (peerConnection) {
+          // TODO: if we already have a peer connection we are resuming a recording. Add handlers for pausing and resuming session.
+          const { dataChannel } = await startRealtimeSession(peerConnection);
+          setDataChannel(dataChannel);
+        } else {
+          const pc = new RTCPeerConnection();
+          setPeerConnection(pc);
+          const { dataChannel } = await startRealtimeSession(pc);
+          setDataChannel(dataChannel);
+        }
+        setIsRecording(true);
+    } else if (peerConnection) {
+      endRealtimeSession(peerConnection, dataChannel);
+      setPeerConnection(null);
+      setDataChannel(null);
+      setIsRecording(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!dataChannel) return;
+
+    const handleMessage = (e: MessageEvent) => {
+      try {
+        const event: RealtimeEvent = JSON.parse(e.data);
+        processEvent(event);
+      } catch (error) {
+        console.error('Error processing message:', error);
+      }
+    };
+
+    dataChannel.addEventListener("message", handleMessage);
+    return () => dataChannel.removeEventListener("message", handleMessage);
+  }, [dataChannel]);
+
+  const processEvent = (event: RealtimeEvent) => {
+    console.log('Processing event:', event.type, event);
+  }
+
   const requestMicrophoneAccess = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      peerConnection.current.addTrack(stream.getTracks()[0]);
+      // TODO: Consider caching this stream as a state variable or creating a RTCPeerConnection here directly. that way we can visualize just single audio. 
+      await navigator.mediaDevices.getUserMedia({ audio: true });
       setPermissionError(null);
     } catch (err) {
       if (err instanceof Error) {
@@ -39,39 +104,14 @@ export default function SimulatorPage() {
     }
   };
 
-  const handleRecordingToggle = async () => {
-    if (!isRecording) {
-      if (!peerConnection.current.getSenders().length) {
-        await requestMicrophoneAccess();
-        return;
-      }
-      const { dataChannel } = await startRealtimeSession(peerConnection);
-      setDataChannel(dataChannel);
-      setIsRecording(true);
-    } else {
-      endRealtimeSession(peerConnection.current, dataChannel);
-      setDataChannel(null);
-      setIsRecording(false);
-    }
-  };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (peerConnection.current) {
-        endRealtimeSession(peerConnection.current, dataChannel);
-      }
-    };
-  }, [peerConnection, dataChannel]);
-
   return (
     // We are forcing dark mode for the simulator.
     <div className="min-h-screen bg-background dark">
       <main className="container mx-auto p-8 flex flex-col h-[calc(100vh-4rem)]">
         <div className="flex-1 bg-muted/50 rounded-lg p-4">
           {/* TODO: audio from LLM is not being visualized in the Audio Visualizer */}
-          {!permissionError && <AudioVisualizer peerConnection={peerConnection} />}
-          {permissionError && (
+          {peerConnection && <AudioVisualizer peerConnection={peerConnection} />}
+          {!peerConnection && (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <p className="text-muted-foreground mb-4">

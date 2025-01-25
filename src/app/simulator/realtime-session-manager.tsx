@@ -1,7 +1,6 @@
 import { RefObject } from "react";
 
-// Function accpets active RTCPeerConnection and adds OAI to RTC.
-export async function startRealtimeSession(rtcPeerConnection: RefObject<RTCPeerConnection>) {
+export async function startRealtimeSession(rtcPeerConnection: RTCPeerConnection) {
     let dataChannel: RTCDataChannel | null = null;
 
     try {
@@ -9,11 +8,19 @@ export async function startRealtimeSession(rtcPeerConnection: RefObject<RTCPeerC
         const data = await tokenResponse.json();
         const EPHEMERAL_KEY = data.client_secret.value;
 
+        const audioEl = document.createElement("audio");
+        audioEl.autoplay = true;
+        rtcPeerConnection.ontrack = (e) => {
+            audioEl.srcObject = e.streams[0];
+        };
 
-        dataChannel = rtcPeerConnection.current.createDataChannel("oai-events");
+        const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
+        rtcPeerConnection.addTrack(ms.getTracks()[0]);
 
-        const offer = await rtcPeerConnection.current.createOffer();
-        await rtcPeerConnection.current.setLocalDescription(offer);
+        dataChannel = rtcPeerConnection.createDataChannel("oai-events");
+        
+        const offer = await rtcPeerConnection.createOffer();
+        await rtcPeerConnection.setLocalDescription(offer);
 
         const baseUrl = "https://api.openai.com/v1/realtime";
         const model = "gpt-4o-realtime-preview-2024-12-17";
@@ -32,7 +39,7 @@ export async function startRealtimeSession(rtcPeerConnection: RefObject<RTCPeerC
             sdp: await sdpResponse.text(),
         };
 
-        await rtcPeerConnection.current.setRemoteDescription(answer);
+        await rtcPeerConnection.setRemoteDescription(answer);
     } catch (error) {
         console.error("Error starting realtime session:", error);
     } 
