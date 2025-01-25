@@ -109,7 +109,6 @@ export default function SimulatorPage() {
     <div className="min-h-screen bg-background dark">
       <main className="container mx-auto p-8 flex flex-col h-[calc(100vh-4rem)]">
         <div className="flex-1 bg-muted/50 rounded-lg p-4">
-          {/* TODO: audio from LLM is not being visualized in the Audio Visualizer */}
           {peerConnection && <AudioVisualizer peerConnection={peerConnection} />}
           {!peerConnection && (
             <div className="flex items-center justify-center h-full">
