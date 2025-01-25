@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -15,17 +15,81 @@ const AudioVisualizer = dynamic(() => import('@/components/AudioVisualizer'), {
   ssr: false
 });
 
+interface RealtimeEvent {
+  type: string;
+  response?: {
+    modalities: string[];
+    instructions: string;
+    content?: string;
+  };
+  event_id?: string;
+  response_id?: string;
+  delta?: string;
+  audio_data?: Uint8Array;
+  transcript?: string;
+  input_audio_transcription?: string;
+  text?: string;
+  output?: Array<{
+    content: Array<{
+      type: string;
+      transcript?: string;
+    }>;
+  }>;
+  [key: string]: unknown;
+}
+
 export default function SimulatorPage() {
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioStream, setAudioStream] = useState<MediaStream | null>(null);
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
   const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
-  const [permissionError, setPermissionError] = useState<string | null>(null);
+  const [permissionError, setPermissionError] = useState<string | null>("Enable your microphone to start recording");
+
+  const handleRecordingToggle = async () => {
+    setPermissionError(null);
+    if (!isRecording) {
+        if (peerConnection) {
+          // TODO: if we already have a peer connection we are resuming a recording. Add handlers for pausing and resuming session.
+          const { dataChannel } = await startRealtimeSession(peerConnection);
+          setDataChannel(dataChannel);
+        } else {
+          const pc = new RTCPeerConnection();
+          setPeerConnection(pc);
+          const { dataChannel } = await startRealtimeSession(pc);
+          setDataChannel(dataChannel);
+        }
+        setIsRecording(true);
+    } else if (peerConnection) {
+      endRealtimeSession(peerConnection, dataChannel);
+      setPeerConnection(null);
+      setDataChannel(null);
+      setIsRecording(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!dataChannel) return;
+
+    const handleMessage = (e: MessageEvent) => {
+      try {
+        const event: RealtimeEvent = JSON.parse(e.data);
+        processEvent(event);
+      } catch (error) {
+        console.error('Error processing message:', error);
+      }
+    };
+
+    dataChannel.addEventListener("message", handleMessage);
+    return () => dataChannel.removeEventListener("message", handleMessage);
+  }, [dataChannel]);
+
+  const processEvent = (event: RealtimeEvent) => {
+    console.log('Processing event:', event.type, event);
+  }
 
   const requestMicrophoneAccess = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setAudioStream(stream);
+      // TODO: Consider caching this stream as a state variable or creating a RTCPeerConnection here directly. that way we can visualize just single audio. 
+      await navigator.mediaDevices.getUserMedia({ audio: true });
       setPermissionError(null);
     } catch (err) {
       if (err instanceof Error) {
@@ -40,51 +104,18 @@ export default function SimulatorPage() {
     }
   };
 
-  // Only request microphone access when user clicks the record button
-  const handleRecordingToggle = async () => {
-    if (!isRecording) {
-      if (!audioStream) {
-        await requestMicrophoneAccess();
-        return; // Don't start recording yet, wait for stream to be available
-      }
-      // Start recording
-      const { peerConnection: pc, dataChannel: dc } = await startRealtimeSession(audioStream);
-      setPeerConnection(pc);
-      setDataChannel(dc);
-      setIsRecording(true);
-    } else {
-      // Stop recording
-      endRealtimeSession(peerConnection, dataChannel);
-      setPeerConnection(null);
-      setDataChannel(null);
-      setIsRecording(false);
-    }
-  };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (audioStream) {
-        audioStream.getTracks().forEach(track => track.stop());
-      }
-      if (peerConnection) {
-        endRealtimeSession(peerConnection, dataChannel);
-      }
-    };
-  }, [audioStream, peerConnection, dataChannel]);
-
   return (
     // We are forcing dark mode for the simulator.
     <div className="min-h-screen bg-background dark">
       <main className="container mx-auto p-8 flex flex-col h-[calc(100vh-4rem)]">
         <div className="flex-1 bg-muted/50 rounded-lg p-4">
           {/* TODO: audio from LLM is not being visualized in the Audio Visualizer */}
-          {audioStream && <AudioVisualizer audioStream={audioStream} />}
-          {!audioStream && (
+          {peerConnection && <AudioVisualizer peerConnection={peerConnection} />}
+          {!peerConnection && (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <p className="text-muted-foreground mb-4">
-                  {permissionError || "Enable your microphone to start recording"}
+                  {permissionError}
                 </p>
                 <Button 
                     variant="secondary" 

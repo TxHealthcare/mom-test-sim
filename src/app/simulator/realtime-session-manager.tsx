@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { RefObject } from "react";
 
-export async function startRealtimeSession(audioStream: MediaStream) {
-    let peerConnection: RTCPeerConnection | null = null;
+export async function startRealtimeSession(rtcPeerConnection: RTCPeerConnection) {
     let dataChannel: RTCDataChannel | null = null;
 
     try {
@@ -9,20 +8,19 @@ export async function startRealtimeSession(audioStream: MediaStream) {
         const data = await tokenResponse.json();
         const EPHEMERAL_KEY = data.client_secret.value;
 
-        peerConnection = new RTCPeerConnection();
-
         const audioEl = document.createElement("audio");
         audioEl.autoplay = true;
-        peerConnection.ontrack = (e) => {
+        rtcPeerConnection.ontrack = (e) => {
             audioEl.srcObject = e.streams[0];
         };
 
-        peerConnection.addTrack(audioStream.getTracks()[0]);
+        const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
+        rtcPeerConnection.addTrack(ms.getTracks()[0]);
 
-        dataChannel = peerConnection.createDataChannel("oai-events");
-
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
+        dataChannel = rtcPeerConnection.createDataChannel("oai-events");
+        
+        const offer = await rtcPeerConnection.createOffer();
+        await rtcPeerConnection.setLocalDescription(offer);
 
         const baseUrl = "https://api.openai.com/v1/realtime";
         const model = "gpt-4o-realtime-preview-2024-12-17";
@@ -41,12 +39,12 @@ export async function startRealtimeSession(audioStream: MediaStream) {
             sdp: await sdpResponse.text(),
         };
 
-        await peerConnection.setRemoteDescription(answer);
+        await rtcPeerConnection.setRemoteDescription(answer);
     } catch (error) {
         console.error("Error starting realtime session:", error);
     } 
 
-    return { peerConnection, dataChannel };
+    return { dataChannel };
 }
 
 export function endRealtimeSession(peerConnection: RTCPeerConnection | null, dataChannel: RTCDataChannel | null) {
@@ -56,10 +54,12 @@ export function endRealtimeSession(peerConnection: RTCPeerConnection | null, dat
         }
 
         if (peerConnection) {
-            peerConnection.getSenders().forEach(sender => {
-                peerConnection.removeTrack(sender);
-            });
-            peerConnection.close();
+            if (peerConnection.signalingState !== 'closed') {
+                peerConnection.getSenders().forEach(sender => {
+                    peerConnection.removeTrack(sender);
+                });
+                peerConnection.close();
+            }
         }
     } catch (error) {
         console.error("Error ending realtime session:", error);
