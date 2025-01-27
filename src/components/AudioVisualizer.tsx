@@ -15,27 +15,29 @@ export default function AudioVisualizer({ peerConnection }: AudioVisualizerProps
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Initialize analyzer first to use its AudioContext
     analyzerRef.current = new AudioMotionAnalyzer(containerRef.current, {
       connectSpeakers: false,
       height: containerRef.current.clientHeight,
       width: containerRef.current.clientWidth,
-      mode: 3,
-      gradient: 'prism',
+      mode: 4,
+      barSpace: .25,
       colorMode: 'gradient',
-      mirror: 1,
+      fillAlpha: 0.2,
+      gradient: 'prism',
+      lineWidth: 2,
+      mirror: 0,
       minDecibels: -70,
+			reflexRatio: .5,
+			reflexAlpha: 1,
+      roundBars: true,
       showScaleX: false,
       showScaleY: false,
       showPeaks: false,
       showBgColor: false,
-      lineWidth: 2,
-      fillAlpha: 0.2,
-      radial: false,
-      roundBars: true,
+      smoothing: .7,
+      weightingFilter: 'D',
     });
 
-    // Get the AudioContext from the analyzer
     const audioCtx = analyzerRef.current.audioCtx;
     
     // Create a merger node to combine all audio streams
