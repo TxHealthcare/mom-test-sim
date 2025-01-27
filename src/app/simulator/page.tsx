@@ -112,7 +112,7 @@ export default function SimulatorPage() {
         <div className="flex-1 bg-muted/50 rounded-lg p-4">
           {(localStream || peerConnection) && 
             <AudioVisualizer 
-              peerConnection={peerConnection || undefined} 
+              peerConnection={peerConnection ?? undefined} 
               localStream={localStream ?? undefined} 
               isRecording={isRecording}
             />
