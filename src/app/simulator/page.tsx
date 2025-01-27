@@ -43,6 +43,7 @@ export default function SimulatorPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
   const [permissionError, setPermissionError] = useState<string | null>("Enable your microphone to start recording");
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
 
   const handleRecordingToggle = async () => {
     setPermissionError(null);
@@ -88,8 +89,8 @@ export default function SimulatorPage() {
 
   const requestMicrophoneAccess = async () => {
     try {
-      // TODO: Consider caching this stream as a state variable or creating a RTCPeerConnection here directly. that way we can visualize just single audio. 
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setLocalStream(stream);
       setPermissionError(null);
     } catch (err) {
       if (err instanceof Error) {
@@ -109,8 +110,14 @@ export default function SimulatorPage() {
     <div className="min-h-screen bg-background dark">
       <main className="container mx-auto p-8 flex flex-col h-[calc(100vh-4rem)]">
         <div className="flex-1 bg-muted/50 rounded-lg p-4">
-          {peerConnection && <AudioVisualizer peerConnection={peerConnection} />}
-          {!peerConnection && (
+          {(localStream || peerConnection) && 
+            <AudioVisualizer 
+              peerConnection={peerConnection || undefined} 
+              localStream={localStream ?? undefined} 
+              isRecording={isRecording}
+            />
+          }
+          {!localStream && !peerConnection && (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <p className="text-muted-foreground mb-4">

@@ -4,13 +4,16 @@ import { RefObject, useEffect, useRef } from 'react';
 import AudioMotionAnalyzer from 'audiomotion-analyzer';
 
 interface AudioVisualizerProps {
-  peerConnection: RTCPeerConnection;
+  peerConnection?: RTCPeerConnection;
+  localStream?: MediaStream;
+  isRecording: boolean;
 }
 
-export default function AudioVisualizer({ peerConnection }: AudioVisualizerProps) {
+export default function AudioVisualizer({ peerConnection, localStream, isRecording }: AudioVisualizerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const analyzerRef = useRef<AudioMotionAnalyzer | null>(null);
   const mergerRef = useRef<ChannelMergerNode | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -52,53 +55,64 @@ export default function AudioVisualizer({ peerConnection }: AudioVisualizerProps
       analyzerRef.current?.disconnectInput();
       analyzerRef.current?.destroy();
     };
-  }, [peerConnection]);
+  }, []);
 
-  // Handle track changes
+  // Handle audio source switching based on isRecording state
   useEffect(() => {
     if (!analyzerRef.current || !mergerRef.current) return;
 
+    // Disconnect any existing source
+    if (sourceRef.current) {
+      sourceRef.current.disconnect();
+      sourceRef.current = null;
+    }
+
     const audioCtx = analyzerRef.current.audioCtx;
 
-    // Connect all current tracks
-    const connectTrack = (track: MediaStreamTrack) => {
-      if (track.kind === 'audio') {
-        const stream = new MediaStream([track]);
-        const source = audioCtx.createMediaStreamSource(stream);
-        source.connect(mergerRef.current!);
-      }
-    };
+    if (isRecording && peerConnection) {
+      // Connect RTC tracks
+      const connectTrack = (track: MediaStreamTrack) => {
+        if (track.kind === 'audio') {
+          const stream = new MediaStream([track]);
+          sourceRef.current = audioCtx.createMediaStreamSource(stream);
+          sourceRef.current.connect(mergerRef.current!);
+        }
+      };
 
-    // Connect existing tracks
-    peerConnection.getSenders().forEach(sender => {
-      if (sender.track) connectTrack(sender.track);
-    });
-
-    peerConnection.getReceivers().forEach(receiver => {
-      if (receiver.track) connectTrack(receiver.track);
-    });
-
-    // Handle new tracks
-    const handleTrack = (event: RTCTrackEvent) => {
-      connectTrack(event.track);
-    };
-
-    const handleNegotiation = () => {
-      // Reconnect all current tracks
-      peerConnection?.getSenders().forEach(sender => {
+      peerConnection.getSenders().forEach(sender => {
         if (sender.track) connectTrack(sender.track);
       });
-    };
 
-    peerConnection.ontrack = handleTrack;
-    peerConnection.onnegotiationneeded = handleNegotiation;
+      peerConnection.getReceivers().forEach(receiver => {
+        if (receiver.track) connectTrack(receiver.track);
+      });
 
-    // Debug logging
-    console.log('Audio tracks:', {
-      senders: peerConnection.getSenders().length,
-      receivers: peerConnection.getReceivers().length
-    });
-  }, [peerConnection, peerConnection?.getSenders().length]);
+      const handleTrack = (event: RTCTrackEvent) => {
+        connectTrack(event.track);
+      };
+
+      peerConnection.ontrack = handleTrack;
+
+      return () => {
+        peerConnection.ontrack = null;
+        if (sourceRef.current) {
+          sourceRef.current.disconnect();
+          sourceRef.current = null;
+        }
+      };
+    } else if (!isRecording && localStream) {
+      // Connect local stream
+      sourceRef.current = audioCtx.createMediaStreamSource(localStream);
+      sourceRef.current.connect(mergerRef.current);
+
+      return () => {
+        if (sourceRef.current) {
+          sourceRef.current.disconnect();
+          sourceRef.current = null;
+        }
+      };
+    }
+  }, [isRecording, peerConnection, localStream]);
 
   return (
     <div 
