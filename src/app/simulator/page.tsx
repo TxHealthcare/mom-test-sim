@@ -44,6 +44,7 @@ export default function SimulatorPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
   const [permissionError, setPermissionError] = useState<string | null>("Enable your microphone to start recording");
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
 
   const handleRecordingToggle = async () => {
     setPermissionError(null);
