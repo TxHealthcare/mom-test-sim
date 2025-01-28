@@ -52,10 +52,9 @@ export default function SimulatorPage() {
   const [microphoneState, setMicrophoneState] = useState<MicrophoneState>({ 
     isBlocked: false, 
   });
+  const [hasStartedRecording, setHasStartedRecording] = useState(false);
 
   const handleRecordingToggle = async () => {
-    setPermissionError(null);
-
     const toggleTracks = (enabled: boolean) => {
       if (!peerConnection) {
         console.error("No peer connection found on conversation toggle.");
@@ -133,7 +132,6 @@ export default function SimulatorPage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setLocalStream(stream);
-      setPermissionError(null);
     } catch (err) {
       if (err instanceof Error) {
         if (err.name === 'NotAllowedError') {
