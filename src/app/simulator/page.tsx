@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/tooltip";
 import dynamic from 'next/dynamic';
 import { startRealtimeSession, endRealtimeSession } from "./realtime-session-manager";
+import { Check } from "lucide-react";
 
 const AudioVisualizer = dynamic(() => import('@/components/AudioVisualizer'), {
   ssr: false
@@ -38,32 +39,68 @@ interface RealtimeEvent {
   [key: string]: unknown;
 }
 
+interface MicrophoneState {
+  isBlocked: boolean;
+  errorMessage?: string;
+}
+
 export default function SimulatorPage() {
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
-  const [permissionError, setPermissionError] = useState<string | null>("Enable your microphone to start recording");
+  const [microphoneState, setMicrophoneState] = useState<MicrophoneState>({ 
+    isBlocked: false, 
+  });
 
   const handleRecordingToggle = async () => {
     setPermissionError(null);
+
+    const toggleTracks = (enabled: boolean) => {
+      if (!peerConnection) {
+        console.error("No peer connection found on conversation toggle.");
+        return;
+      }
+      
+      [...peerConnection.getSenders(), ...peerConnection.getReceivers()]
+        .forEach(transceiver => {
+          if (transceiver.track) {
+            transceiver.track.enabled = enabled;
+          }
+        });
+    };
+
     if (!isRecording) {
-        if (peerConnection) {
-          // TODO: if we already have a peer connection we are resuming a recording. Add handlers for pausing and resuming session.
-          const { dataChannel } = await startRealtimeSession(peerConnection);
-          setDataChannel(dataChannel);
-        } else {
-          const pc = new RTCPeerConnection();
-          setPeerConnection(pc);
-          const { dataChannel } = await startRealtimeSession(pc);
-          setDataChannel(dataChannel);
-        }
+      if (peerConnection) {
+        // Resume conversation
+        toggleTracks(true);
         setIsRecording(true);
+      } else if (!peerConnection && !hasStartedRecording) {
+        // Start conversation
+        const pc = new RTCPeerConnection();
+        setPeerConnection(pc);
+        const { dataChannel } = await startRealtimeSession(pc);
+        setDataChannel(dataChannel);
+        setHasStartedRecording(true);
+        setIsRecording(true);
+      } else {
+        console.error("Error starting recording");
+      }
     } else if (peerConnection) {
+      // Pause conversation
+      toggleTracks(false);
+      setIsRecording(false);
+    }
+  }
+
+  const handleFinishConversation = () => {
+    if (peerConnection) {
       endRealtimeSession(peerConnection, dataChannel);
       setPeerConnection(null);
       setDataChannel(null);
       setIsRecording(false);
+    } else {
+      console.error("No peer connection found");
     }
   }
 
@@ -87,6 +124,11 @@ export default function SimulatorPage() {
     console.log('Processing event:', event.type, event);
   }
 
+  // Immediately request mic access after page load to reduce error state chances.
+  useEffect(() => {
+    requestMicrophoneAccess();
+  }, []);
+
   const requestMicrophoneAccess = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -95,11 +137,20 @@ export default function SimulatorPage() {
     } catch (err) {
       if (err instanceof Error) {
         if (err.name === 'NotAllowedError') {
-          setPermissionError('Microphone access was denied. Please allow microphone access to use this feature.');
+          setMicrophoneState({ 
+            isBlocked: true, 
+            errorMessage: 'Microphone access was denied. Please allow microphone access to use this feature.' 
+          });
         } else if (err.name === 'NotFoundError') {
-          setPermissionError('No microphone found. Please connect a microphone and try again.');
+          setMicrophoneState({ 
+            isBlocked: true, 
+            errorMessage: 'No microphone found. Please connect a microphone and try again.' 
+          });
         } else {
-          setPermissionError('An error occurred while accessing the microphone. Please try again.');
+          setMicrophoneState({ 
+            isBlocked: true, 
+            errorMessage: 'An error occurred while accessing the microphone. Please try again.' 
+          });
         }
       }
     }
@@ -121,7 +172,7 @@ export default function SimulatorPage() {
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <p className="text-muted-foreground mb-4">
-                  {permissionError}
+                  {microphoneState.errorMessage}
                 </p>
                 <Button 
                     variant="secondary" 
@@ -133,16 +184,18 @@ export default function SimulatorPage() {
             </div>
           )}
         </div>
-        <div className="h-[200px] bg-muted/50 mt-8 rounded-lg flex items-center justify-center">
-          <div className="relative">
+        <div className="h-[200px] bg-muted/50 mt-8 rounded-lg flex items-center justify-between px-8"> 
+          <div className="flex-1" /> {/* Spacer */}
+          <div className="flex items-center justify-center">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="outline"
                     size="default"
-                    className={`bg-accent hover:bg-accent/90 transition-all duration-300 ${isRecording ? "h-12 w-12 rounded-lg" : "h-16 w-16 rounded-full"}`}
+                    className={`bg-red-600 hover:bg-red-700 transition-all duration-300 ${isRecording ? "h-12 w-12 rounded-lg" : "h-16 w-16 rounded-full"}`}
                     onClick={handleRecordingToggle}
+                    disabled={microphoneState.isBlocked}
                   >
                   </Button>
                 </TooltipTrigger>
@@ -151,6 +204,27 @@ export default function SimulatorPage() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          </div>
+          <div className="flex-1 flex justify-end">
+            {hasStartedRecording && !isRecording && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="bg-accent hover:bg-accent/90 h-12 w-12 rounded-full"
+                      onClick={handleFinishConversation}
+                    >
+                      <Check className="h-20 w-20 text-accent-foreground" strokeWidth={5} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Finish Conversation</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
         </div>
       </main>
