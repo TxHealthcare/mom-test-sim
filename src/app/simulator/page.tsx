@@ -46,6 +46,7 @@ interface MicrophoneState {
 
 export default function SimulatorPage() {
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
   const [microphoneState, setMicrophoneState] = useState<MicrophoneState>({ 
@@ -130,8 +131,9 @@ export default function SimulatorPage() {
 
   const requestMicrophoneAccess = async () => {
     try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      setMicrophoneState({ isBlocked: false });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setLocalStream(stream);
+      setPermissionError(null);
     } catch (err) {
       if (err instanceof Error) {
         if (err.name === 'NotAllowedError') {
@@ -159,8 +161,14 @@ export default function SimulatorPage() {
     <div className="min-h-screen bg-background dark">
       <main className="container mx-auto p-8 flex flex-col h-[calc(100vh-4rem)]">
         <div className="flex-1 bg-muted/50 rounded-lg p-4">
-          {peerConnection && !microphoneState.isBlocked && <AudioVisualizer peerConnection={peerConnection} />}
-          {!peerConnection && microphoneState.isBlocked && (
+          {(localStream || peerConnection) && 
+            <AudioVisualizer 
+              peerConnection={peerConnection ?? undefined} 
+              localStream={localStream ?? undefined} 
+              isRecording={isRecording}
+            />
+          }
+          {!localStream && !peerConnection && (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <p className="text-muted-foreground mb-4">
