@@ -39,12 +39,18 @@ interface RealtimeEvent {
   [key: string]: unknown;
 }
 
+interface MicrophoneState {
+  isBlocked: boolean;
+  errorMessage?: string;
+}
+
 export default function SimulatorPage() {
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
-  const [permissionError, setPermissionError] = useState<string | null>("Enable your microphone to start recording");
-  const [hasStartedRecording, setHasStartedRecording] = useState(false);
+  const [microphoneState, setMicrophoneState] = useState<MicrophoneState>({ 
+    isBlocked: false, 
+  });
 
   const handleRecordingToggle = async () => {
     setPermissionError(null);
@@ -117,19 +123,32 @@ export default function SimulatorPage() {
     console.log('Processing event:', event.type, event);
   }
 
+  // Immediately request mic access after page load to reduce error state chances.
+  useEffect(() => {
+    requestMicrophoneAccess();
+  }, []);
+
   const requestMicrophoneAccess = async () => {
     try {
-      // TODO: Consider caching this stream as a state variable or creating a RTCPeerConnection here directly. that way we can visualize just single audio. 
       await navigator.mediaDevices.getUserMedia({ audio: true });
-      setPermissionError(null);
+      setMicrophoneState({ isBlocked: false });
     } catch (err) {
       if (err instanceof Error) {
         if (err.name === 'NotAllowedError') {
-          setPermissionError('Microphone access was denied. Please allow microphone access to use this feature.');
+          setMicrophoneState({ 
+            isBlocked: true, 
+            errorMessage: 'Microphone access was denied. Please allow microphone access to use this feature.' 
+          });
         } else if (err.name === 'NotFoundError') {
-          setPermissionError('No microphone found. Please connect a microphone and try again.');
+          setMicrophoneState({ 
+            isBlocked: true, 
+            errorMessage: 'No microphone found. Please connect a microphone and try again.' 
+          });
         } else {
-          setPermissionError('An error occurred while accessing the microphone. Please try again.');
+          setMicrophoneState({ 
+            isBlocked: true, 
+            errorMessage: 'An error occurred while accessing the microphone. Please try again.' 
+          });
         }
       }
     }
@@ -140,12 +159,12 @@ export default function SimulatorPage() {
     <div className="min-h-screen bg-background dark">
       <main className="container mx-auto p-8 flex flex-col h-[calc(100vh-4rem)]">
         <div className="flex-1 bg-muted/50 rounded-lg p-4">
-          {peerConnection && <AudioVisualizer peerConnection={peerConnection} />}
-          {!peerConnection && (
+          {peerConnection && !microphoneState.isBlocked && <AudioVisualizer peerConnection={peerConnection} />}
+          {!peerConnection && microphoneState.isBlocked && (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <p className="text-muted-foreground mb-4">
-                  {permissionError}
+                  {microphoneState.errorMessage}
                 </p>
                 <Button 
                     variant="secondary" 
@@ -168,6 +187,7 @@ export default function SimulatorPage() {
                     size="default"
                     className={`bg-red-600 hover:bg-red-700 transition-all duration-300 ${isRecording ? "h-12 w-12 rounded-lg" : "h-16 w-16 rounded-full"}`}
                     onClick={handleRecordingToggle}
+                    disabled={microphoneState.isBlocked}
                   >
                   </Button>
                 </TooltipTrigger>
