@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/tooltip";
 import dynamic from 'next/dynamic';
 import { startRealtimeSession, endRealtimeSession } from "./realtime-session-manager";
+import { Check } from "lucide-react";
 
 const AudioVisualizer = dynamic(() => import('@/components/AudioVisualizer'), {
   ssr: false
@@ -52,23 +53,53 @@ export default function SimulatorPage() {
   });
 
   const handleRecordingToggle = async () => {
+    setPermissionError(null);
+
+    const toggleTracks = (enabled: boolean) => {
+      if (!peerConnection) {
+        console.error("No peer connection found on conversation toggle.");
+        return;
+      }
+      
+      [...peerConnection.getSenders(), ...peerConnection.getReceivers()]
+        .forEach(transceiver => {
+          if (transceiver.track) {
+            transceiver.track.enabled = enabled;
+          }
+        });
+    };
+
     if (!isRecording) {
-        if (peerConnection) {
-          // TODO: if we already have a peer connection we are resuming a recording. Add handlers for pausing and resuming session.
-          const { dataChannel } = await startRealtimeSession(peerConnection);
-          setDataChannel(dataChannel);
-        } else {
-          const pc = new RTCPeerConnection();
-          setPeerConnection(pc);
-          const { dataChannel } = await startRealtimeSession(pc);
-          setDataChannel(dataChannel);
-        }
+      if (peerConnection) {
+        // Resume conversation
+        toggleTracks(true);
         setIsRecording(true);
+      } else if (!peerConnection && !hasStartedRecording) {
+        // Start conversation
+        const pc = new RTCPeerConnection();
+        setPeerConnection(pc);
+        const { dataChannel } = await startRealtimeSession(pc);
+        setDataChannel(dataChannel);
+        setHasStartedRecording(true);
+        setIsRecording(true);
+      } else {
+        console.error("Error starting recording");
+      }
     } else if (peerConnection) {
+      // Pause conversation
+      toggleTracks(false);
+      setIsRecording(false);
+    }
+  }
+
+  const handleFinishConversation = () => {
+    if (peerConnection) {
       endRealtimeSession(peerConnection, dataChannel);
       setPeerConnection(null);
       setDataChannel(null);
       setIsRecording(false);
+    } else {
+      console.error("No peer connection found");
     }
   }
 
@@ -145,15 +176,16 @@ export default function SimulatorPage() {
             </div>
           )}
         </div>
-        <div className="h-[200px] bg-muted/50 mt-8 rounded-lg flex items-center justify-center">
-          <div className="relative">
+        <div className="h-[200px] bg-muted/50 mt-8 rounded-lg flex items-center justify-between px-8"> 
+          <div className="flex-1" /> {/* Spacer */}
+          <div className="flex items-center justify-center">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="outline"
                     size="default"
-                    className={`bg-accent hover:bg-accent/90 transition-all duration-300 ${isRecording ? "h-12 w-12 rounded-lg" : "h-16 w-16 rounded-full"}`}
+                    className={`bg-red-600 hover:bg-red-700 transition-all duration-300 ${isRecording ? "h-12 w-12 rounded-lg" : "h-16 w-16 rounded-full"}`}
                     onClick={handleRecordingToggle}
                     disabled={microphoneState.isBlocked}
                   >
@@ -164,6 +196,27 @@ export default function SimulatorPage() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          </div>
+          <div className="flex-1 flex justify-end">
+            {hasStartedRecording && !isRecording && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="bg-accent hover:bg-accent/90 h-12 w-12 rounded-full"
+                      onClick={handleFinishConversation}
+                    >
+                      <Check className="h-20 w-20 text-accent-foreground" strokeWidth={5} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Finish Conversation</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
         </div>
       </main>
