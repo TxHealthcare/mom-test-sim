@@ -44,6 +44,8 @@ interface MicrophoneState {
   errorMessage?: string;
 }
 
+let didRequestInitialMic = false;
+
 export default function SimulatorPage() {
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -125,7 +127,10 @@ export default function SimulatorPage() {
 
   // Immediately request mic access after page load to reduce error state chances.
   useEffect(() => {
-    requestMicrophoneAccess();
+    if (!didRequestInitialMic) {
+      didRequestInitialMic = true;
+      requestMicrophoneAccess();
+    }
   }, []);
 
   const requestMicrophoneAccess = async () => {
