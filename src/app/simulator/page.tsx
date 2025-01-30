@@ -11,6 +11,7 @@ import {
 import dynamic from 'next/dynamic';
 import { startRealtimeSession, endRealtimeSession } from "./realtime-session-manager";
 import { Check } from "lucide-react";
+import { useAudioMixer } from "@/hooks/useAudioMixer";
 
 const AudioVisualizer = dynamic(() => import('@/components/AudioVisualizer'), {
   ssr: false
@@ -55,6 +56,12 @@ export default function SimulatorPage() {
     isBlocked: false, 
   });
   const [hasStartedRecording, setHasStartedRecording] = useState(false);
+
+  const mergedStream = useAudioMixer({
+    peerConnection: peerConnection ?? undefined,
+    localStream: localStream ?? undefined,
+    isRecording
+  });
 
   const handleRecordingToggle = async () => {
     const toggleTracks = (enabled: boolean) => {
@@ -164,13 +171,11 @@ export default function SimulatorPage() {
     <div className="min-h-screen bg-background dark">
       <main className="container mx-auto p-8 flex flex-col h-[calc(100vh-4rem)]">
         <div className="flex-1 bg-muted/50 rounded-lg p-4">
-          {(localStream || peerConnection) && 
-            <AudioVisualizer 
-              peerConnection={peerConnection ?? undefined} 
-              localStream={localStream ?? undefined} 
-              isRecording={isRecording}
-            />
-          }
+          {(localStream || peerConnection) && (
+            <>
+              {mergedStream && <AudioVisualizer audioStream={mergedStream} />}
+            </>
+          )}
           {!localStream && !peerConnection && (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
@@ -178,10 +183,10 @@ export default function SimulatorPage() {
                   {microphoneState.errorMessage}
                 </p>
                 <Button 
-                    variant="secondary" 
-                    onClick={requestMicrophoneAccess}
-                    >
-                    Try Again
+                  variant="secondary" 
+                  onClick={requestMicrophoneAccess}
+                >
+                  Try Again
                 </Button>
               </div>
             </div>

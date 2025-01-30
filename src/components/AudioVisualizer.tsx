@@ -1,18 +1,15 @@
 "use client";
 
-import { RefObject, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import AudioMotionAnalyzer from 'audiomotion-analyzer';
 
 interface AudioVisualizerProps {
-  peerConnection?: RTCPeerConnection;
-  localStream?: MediaStream;
-  isRecording: boolean;
+  audioStream: MediaStream;
 }
 
-export default function AudioVisualizer({ peerConnection, localStream, isRecording }: AudioVisualizerProps) {
+export default function AudioVisualizer({ audioStream }: AudioVisualizerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const analyzerRef = useRef<AudioMotionAnalyzer | null>(null);
-  const mergerRef = useRef<ChannelMergerNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
 
   useEffect(() => {
@@ -30,8 +27,8 @@ export default function AudioVisualizer({ peerConnection, localStream, isRecordi
       lineWidth: 2,
       mirror: 0,
       minDecibels: -70,
-			reflexRatio: .5,
-			reflexAlpha: 1,
+      reflexRatio: .5,
+      reflexAlpha: 1,
       roundBars: true,
       showScaleX: false,
       showScaleY: false,
@@ -41,15 +38,6 @@ export default function AudioVisualizer({ peerConnection, localStream, isRecordi
       weightingFilter: 'D',
     });
 
-    const audioCtx = analyzerRef.current.audioCtx;
-    
-    // Create a merger node to combine all audio streams
-    mergerRef.current = audioCtx.createChannelMerger(2);
-
-    // Connect the merger to the analyzer
-    analyzerRef.current.connectInput(mergerRef.current);
-    analyzerRef.current.start();
-
     return () => {
       analyzerRef.current?.stop();
       analyzerRef.current?.disconnectInput();
@@ -57,9 +45,9 @@ export default function AudioVisualizer({ peerConnection, localStream, isRecordi
     };
   }, []);
 
-  // Handle audio source switching based on isRecording state
+  // Handle audio stream connection
   useEffect(() => {
-    if (!analyzerRef.current || !mergerRef.current) return;
+    if (!analyzerRef.current || !audioStream) return;
 
     // Disconnect any existing source
     if (sourceRef.current) {
@@ -67,52 +55,19 @@ export default function AudioVisualizer({ peerConnection, localStream, isRecordi
       sourceRef.current = null;
     }
 
+    // Connect new audio stream
     const audioCtx = analyzerRef.current.audioCtx;
+    sourceRef.current = audioCtx.createMediaStreamSource(audioStream);
+    analyzerRef.current.connectInput(sourceRef.current);
+    analyzerRef.current.start();
 
-    if (isRecording && peerConnection) {
-      // Connect RTC tracks
-      const connectTrack = (track: MediaStreamTrack) => {
-        if (track.kind === 'audio') {
-          const stream = new MediaStream([track]);
-          sourceRef.current = audioCtx.createMediaStreamSource(stream);
-          sourceRef.current.connect(mergerRef.current!);
-        }
-      };
-
-      peerConnection.getSenders().forEach(sender => {
-        if (sender.track) connectTrack(sender.track);
-      });
-
-      peerConnection.getReceivers().forEach(receiver => {
-        if (receiver.track) connectTrack(receiver.track);
-      });
-
-      const handleTrack = (event: RTCTrackEvent) => {
-        connectTrack(event.track);
-      };
-
-      peerConnection.ontrack = handleTrack;
-
-      return () => {
-        peerConnection.ontrack = null;
-        if (sourceRef.current) {
-          sourceRef.current.disconnect();
-          sourceRef.current = null;
-        }
-      };
-    } else if (!isRecording && localStream) {
-      // Connect local stream
-      sourceRef.current = audioCtx.createMediaStreamSource(localStream);
-      sourceRef.current.connect(mergerRef.current);
-
-      return () => {
-        if (sourceRef.current) {
-          sourceRef.current.disconnect();
-          sourceRef.current = null;
-        }
-      };
-    }
-  }, [isRecording, peerConnection, localStream]);
+    return () => {
+      if (sourceRef.current) {
+        sourceRef.current.disconnect();
+        sourceRef.current = null;
+      }
+    };
+  }, [audioStream]);
 
   return (
     <div 
