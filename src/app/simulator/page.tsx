@@ -72,28 +72,11 @@ export default function SimulatorPage() {
   const recorderRef = useRef<RecordRTCType | null>(null);
 
   // Function to start recording the conversation
-  const startRecording = (pc: RTCPeerConnection) => {
-    if (!pc) return;
+  const startRecording = () => {
+    if (!mergedStream) return;
 
     try {
-      // Get all audio tracks from senders and receivers
-      const audioTracks: MediaStreamTrack[] = [];
-      pc.getSenders().forEach(sender => {
-        if (sender.track?.kind === 'audio') {
-          audioTracks.push(sender.track);
-        }
-      });
-      pc.getReceivers().forEach(receiver => {
-        if (receiver.track?.kind === 'audio') {
-          audioTracks.push(receiver.track);
-          }
-        });
-
-      // Create a new MediaStream with all audio tracks
-      const combinedStream = new MediaStream(audioTracks);
-
-      // Initialize RecordRTC
-      recorderRef.current = new RecordRTC(combinedStream, {
+      recorderRef.current = new RecordRTC(mergedStream, {
         type: 'audio',
         mimeType: 'audio/webm',
         numberOfAudioChannels: 2,
@@ -106,6 +89,20 @@ export default function SimulatorPage() {
     }
   };
 
+  // Function to pause recording
+  const pauseRecording = async () => {
+    if (!recorderRef.current) return;
+    await recorderRef.current.pauseRecording();
+    console.log('Paused recording conversation');
+  };
+
+  // Function to resume recording
+  const resumeRecording = () => {
+    if (!recorderRef.current) return;
+    recorderRef.current.resumeRecording();
+    console.log('Resumed recording conversation');
+  };
+
   // Function to stop recording and save the file
   const stopRecording = async () => {
     if (!recorderRef.current) return;
@@ -115,6 +112,9 @@ export default function SimulatorPage() {
       const blob = await recorderRef.current.getBlob();
       
       const url = URL.createObjectURL(blob);
+
+      // TODO: This is temporary. We need to actually send this blob to the server instead
+      // of just downloading it. 
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
@@ -149,9 +149,10 @@ export default function SimulatorPage() {
     };
 
     if (!isRecording) {
-      if (peerConnection) {
+      if (peerConnection && hasStartedRecording) {
         // Resume conversation
         toggleTracks(true);
+        resumeRecording();
         setIsRecording(true);
       } else if (!peerConnection && !hasStartedRecording) {
         // Start conversation
@@ -159,7 +160,8 @@ export default function SimulatorPage() {
         setPeerConnection(pc);
         const { dataChannel } = await startRealtimeSession(pc);
         setDataChannel(dataChannel);
-        startRecording(pc);
+
+        startRecording();
         setHasStartedRecording(true);
         setIsRecording(true);
       } else {
@@ -168,6 +170,7 @@ export default function SimulatorPage() {
     } else if (peerConnection) {
       // Pause conversation
       toggleTracks(false);
+      await pauseRecording();
       setIsRecording(false);
     }
   }
@@ -280,7 +283,7 @@ export default function SimulatorPage() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{isRecording ? "Stop Conversation" : "Start Conversation"}</p>
+                  <p>{isRecording ? "Stop Conversation" : hasStartedRecording ? "Resume Conversation" : "Start Conversation"}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
