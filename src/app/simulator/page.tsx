@@ -11,10 +11,16 @@ import {
 import dynamic from 'next/dynamic';
 import { startRealtimeSession, endRealtimeSession } from "./realtime-session-manager";
 import { Check } from "lucide-react";
+import type { RecordRTCPromisesHandler as RecordRTCType } from 'recordrtc';
 
 const AudioVisualizer = dynamic(() => import('@/components/AudioVisualizer'), {
   ssr: false
 });
+
+let RecordRTC: typeof RecordRTCType;
+if (typeof window !== 'undefined') {
+  RecordRTC = require('recordrtc').RecordRTCPromisesHandler;
+}
 
 interface RealtimeEvent {
   type: string;
@@ -46,6 +52,7 @@ interface MicrophoneState {
 
 let didRequestInitialMic = false;
 
+
 export default function SimulatorPage() {
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -55,6 +62,69 @@ export default function SimulatorPage() {
     isBlocked: false, 
   });
   const [hasStartedRecording, setHasStartedRecording] = useState(false);
+  const recorderRef = useRef<RecordRTCType | null>(null);
+
+  // Function to start recording the conversation
+  const startRecording = (pc: RTCPeerConnection) => {
+    if (!pc) return;
+
+    try {
+      // Get all audio tracks from senders and receivers
+      const audioTracks: MediaStreamTrack[] = [];
+      pc.getSenders().forEach(sender => {
+        if (sender.track?.kind === 'audio') {
+          audioTracks.push(sender.track);
+        }
+      });
+      pc.getReceivers().forEach(receiver => {
+        if (receiver.track?.kind === 'audio') {
+          audioTracks.push(receiver.track);
+          }
+        });
+
+      // Create a new MediaStream with all audio tracks
+      const combinedStream = new MediaStream(audioTracks);
+
+      // Initialize RecordRTC
+      recorderRef.current = new RecordRTC(combinedStream, {
+        type: 'audio',
+        mimeType: 'audio/webm',
+        numberOfAudioChannels: 2,
+      });
+
+      recorderRef.current.startRecording();
+      console.log('Started recording conversation');
+    } catch (error) {
+      console.error('Error starting recording:', error);
+    }
+  };
+
+  // Function to stop recording and save the file
+  const stopRecording = async () => {
+    if (!recorderRef.current) return;
+
+    try {
+      await recorderRef.current.stopRecording();
+      const blob = await recorderRef.current.getBlob();
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = 'conversation.webm';
+      document.body.appendChild(a);
+      a.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      recorderRef.current = null;
+    } catch (error) {
+      console.error('Error stopping recording:', error);
+    }
+  };
 
   const handleRecordingToggle = async () => {
     const toggleTracks = (enabled: boolean) => {
@@ -82,6 +152,7 @@ export default function SimulatorPage() {
         setPeerConnection(pc);
         const { dataChannel } = await startRealtimeSession(pc);
         setDataChannel(dataChannel);
+        startRecording(pc);
         setHasStartedRecording(true);
         setIsRecording(true);
       } else {
@@ -94,8 +165,9 @@ export default function SimulatorPage() {
     }
   }
 
-  const handleFinishConversation = () => {
+  const handleFinishConversation = async () => {
     if (peerConnection) {
+      await stopRecording();
       endRealtimeSession(peerConnection, dataChannel);
       setPeerConnection(null);
       setDataChannel(null);
