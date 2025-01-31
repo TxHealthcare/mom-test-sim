@@ -1,7 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { v4 as uuidv4} from "uuid";
+import { saveTranscript } from "@/lib/supabase/supabase-utils";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { TranscriptEntry } from "@/types/transcript";
 import {
   Tooltip,
   TooltipContent,
@@ -49,6 +53,9 @@ interface MicrophoneState {
 let didRequestInitialMic = false;
 
 export default function SimulatorPage() {
+  const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
+  const [session_id] = useState(() => uuidv4());
+  const { user } = useAuth();
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -88,44 +95,92 @@ export default function SimulatorPage() {
         });
     };
 
-    if (!isRecording) {
-      if (peerConnection && hasStartedRecording) {
-        // Resume conversation
-        toggleTracks(true);
-        resumeRecording();
-        setIsRecording(true);
-      } else if (!peerConnection && !hasStartedRecording) {
-        // Start conversation
-        const pc = new RTCPeerConnection();
-        setPeerConnection(pc);
-        const { dataChannel } = await startRealtimeSession(pc);
-        setDataChannel(dataChannel);
+    try {
+      if (!isRecording) {
+        if (peerConnection && hasStartedRecording) {
+          // Resume conversation
+          toggleTracks(true);
+          await resumeRecording();
+          setIsRecording(true);
+        } else if (!peerConnection && !hasStartedRecording) {
+          // Start new conversation
+          const pc = new RTCPeerConnection();
+          setPeerConnection(pc);
+          
+          const { dataChannel } = await startRealtimeSession(pc);
+          setDataChannel(dataChannel);
 
-        startRecording();
-        setHasStartedRecording(true);
-        setIsRecording(true);
-      } else {
-        console.error("Error starting recording");
+          // Start recording only after peer connection is established
+          await startRecording();
+          setHasStartedRecording(true);
+          setIsRecording(true);
+        } else {
+          console.error("Invalid state for starting recording:", {
+            hasPeerConnection: !!peerConnection,
+            hasStartedRecording
+          });
+        }
+      } else if (peerConnection) {
+        // Pause conversation
+        toggleTracks(false);
+        await pauseRecording();
+        setIsRecording(false);
       }
-    } else if (peerConnection) {
-      // Pause conversation
-      toggleTracks(false);
-      await pauseRecording();
+    } catch (error) {
+      console.error('Error in handleRecordingToggle:', error);
+      // Reset state on error
       setIsRecording(false);
+      if (!hasStartedRecording) {
+        if (peerConnection) {
+          peerConnection.close();
+        }
+        setPeerConnection(null);
+        setDataChannel(null);
+      }
     }
-  }
+  };
 
   const handleFinishConversation = async () => {
     if (peerConnection) {
-      await stopRecording();
-      endRealtimeSession(peerConnection, dataChannel);
-      setPeerConnection(null);
-      setDataChannel(null);
-      setIsRecording(false);
+      try {        
+        await stopRecording();
+        endRealtimeSession(peerConnection, dataChannel);
+        setPeerConnection(null);
+        setDataChannel(null);
+        setIsRecording(false);
+
+        if (!user) {
+          console.log('No user found, cannot save transcript');
+          return;
+        }
+
+        const currentTime = new Date().toISOString();
+        const transcriptData = {
+          id: uuidv4(),
+          user_id: user.id,
+          session_id,
+          entries: transcript,
+          created_at: currentTime,
+          updated_at: currentTime
+        };
+
+        const result = await saveTranscript(transcriptData);
+        console.log('Transcript save result:', result);
+
+        const analysis = await fetch('/api/analyze-transcript', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transcript })
+        }).then(res => res.json());
+
+        console.log('Transcript analysis:', analysis);
+      } catch (error) {
+        console.error('Error in handleFinishConversation:', error);
+      }
     } else {
       console.error("No peer connection found");
     }
-  }
+  };
 
   useEffect(() => {
     if (!dataChannel) return;
@@ -143,9 +198,48 @@ export default function SimulatorPage() {
     return () => dataChannel.removeEventListener("message", handleMessage);
   }, [dataChannel]);
 
-  const processEvent = (event: RealtimeEvent) => {
-    console.log('Processing event:', event.type, event);
-  }
+  // Modify processEvent function to track transcript
+  const processEvent = useCallback((event: RealtimeEvent) => {
+    // Track user input from audio transcription
+    if (event.input_audio_transcription) {
+      const userEntry: TranscriptEntry = {
+        role: 'user',
+        content: event.input_audio_transcription,
+        timestamp: Date.now()
+      };
+      setTranscript(prev => [...prev, userEntry]);
+    }
+
+    // Track assistant responses
+    if (event?.output?.[0]?.content?.[0]?.transcript) {
+      const assistantEntry: TranscriptEntry = {
+        role: 'assistant',
+        content: event.output[0].content[0].transcript,
+        timestamp: Date.now()
+      };
+      setTranscript(prev => [...prev, assistantEntry]);
+    }
+
+    // Additional transcript checks
+    if (event.transcript) {
+      const entry: TranscriptEntry = {
+        role: event.type.includes('input') ? 'user' : 'assistant',
+        content: event.transcript,
+        timestamp: Date.now()
+      };
+      setTranscript(prev => [...prev, entry]);
+    }
+
+    // Check for text field
+    if (event.text) {
+      const entry: TranscriptEntry = {
+        role: event.type.includes('input') ? 'user' : 'assistant',
+        content: event.text,
+        timestamp: Date.now()
+      };
+      setTranscript(prev => [...prev, entry]);
+    }
+  }, []);
 
   // Immediately request mic access after page load to reduce error state chances.
   useEffect(() => {
