@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -12,16 +12,11 @@ import dynamic from 'next/dynamic';
 import { startRealtimeSession, endRealtimeSession } from "./realtime-session-manager";
 import { Check } from "lucide-react";
 import { useAudioMixer } from "@/hooks/useAudioMixer";
-import type { RecordRTCPromisesHandler as RecordRTCType } from 'recordrtc';
+import { useRecorder } from "@/hooks/useRecorder";
 
 const AudioVisualizer = dynamic(() => import('@/components/AudioVisualizer'), {
   ssr: false
 });
-
-let RecordRTC: typeof RecordRTCType;
-if (typeof window !== 'undefined') {
-  RecordRTC = require('recordrtc').RecordRTCPromisesHandler;
-}
 
 interface RealtimeEvent {
   type: string;
@@ -53,7 +48,6 @@ interface MicrophoneState {
 
 let didRequestInitialMic = false;
 
-
 export default function SimulatorPage() {
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -69,69 +63,15 @@ export default function SimulatorPage() {
     localStream: localStream ?? undefined,
     isRecording
   });
-  const recorderRef = useRef<RecordRTCType | null>(null);
 
-  // Function to start recording the conversation
-  const startRecording = () => {
-    if (!mergedStream) return;
-
-    try {
-      recorderRef.current = new RecordRTC(mergedStream, {
-        type: 'audio',
-        mimeType: 'audio/webm',
-        numberOfAudioChannels: 2,
-      });
-
-      recorderRef.current.startRecording();
-      console.log('Started recording conversation');
-    } catch (error) {
-      console.error('Error starting recording:', error);
-    }
-  };
-
-  // Function to pause recording
-  const pauseRecording = async () => {
-    if (!recorderRef.current) return;
-    await recorderRef.current.pauseRecording();
-    console.log('Paused recording conversation');
-  };
-
-  // Function to resume recording
-  const resumeRecording = () => {
-    if (!recorderRef.current) return;
-    recorderRef.current.resumeRecording();
-    console.log('Resumed recording conversation');
-  };
-
-  // Function to stop recording and save the file
-  const stopRecording = async () => {
-    if (!recorderRef.current) return;
-
-    try {
-      await recorderRef.current.stopRecording();
-      const blob = await recorderRef.current.getBlob();
-      
-      const url = URL.createObjectURL(blob);
-
-      // TODO: This is temporary. We need to actually send this blob to the server instead
-      // of just downloading it. 
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = 'conversation.webm';
-      document.body.appendChild(a);
-      a.click();
-      
-      setTimeout(() => {
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      }, 100);
-
-      recorderRef.current = null;
-    } catch (error) {
-      console.error('Error stopping recording:', error);
-    }
-  };
+  const {
+    startRecording,
+    pauseRecording,
+    resumeRecording,
+    stopRecording
+  } = useRecorder({
+    stream: mergedStream
+  });
 
   const handleRecordingToggle = async () => {
     const toggleTracks = (enabled: boolean) => {
@@ -283,7 +223,7 @@ export default function SimulatorPage() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{isRecording ? "Stop Conversation" : hasStartedRecording ? "Resume Conversation" : "Start Conversation"}</p>
+                  <p>{isRecording ? "Pause Conversation" : hasStartedRecording ? "Resume Conversation" : "Start Conversation"}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
