@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -12,6 +12,7 @@ import dynamic from 'next/dynamic';
 import { startRealtimeSession, endRealtimeSession } from "./realtime-session-manager";
 import { Check } from "lucide-react";
 import { useAudioMixer } from "@/hooks/useAudioMixer";
+import { useRecorder } from "@/hooks/useRecorder";
 
 const AudioVisualizer = dynamic(() => import('@/components/AudioVisualizer'), {
   ssr: false
@@ -63,6 +64,15 @@ export default function SimulatorPage() {
     isRecording
   });
 
+  const {
+    startRecording,
+    pauseRecording,
+    resumeRecording,
+    stopRecording
+  } = useRecorder({
+    stream: mergedStream
+  });
+
   const handleRecordingToggle = async () => {
     const toggleTracks = (enabled: boolean) => {
       if (!peerConnection) {
@@ -79,9 +89,10 @@ export default function SimulatorPage() {
     };
 
     if (!isRecording) {
-      if (peerConnection) {
+      if (peerConnection && hasStartedRecording) {
         // Resume conversation
         toggleTracks(true);
+        resumeRecording();
         setIsRecording(true);
       } else if (!peerConnection && !hasStartedRecording) {
         // Start conversation
@@ -89,6 +100,8 @@ export default function SimulatorPage() {
         setPeerConnection(pc);
         const { dataChannel } = await startRealtimeSession(pc);
         setDataChannel(dataChannel);
+
+        startRecording();
         setHasStartedRecording(true);
         setIsRecording(true);
       } else {
@@ -97,12 +110,14 @@ export default function SimulatorPage() {
     } else if (peerConnection) {
       // Pause conversation
       toggleTracks(false);
+      await pauseRecording();
       setIsRecording(false);
     }
   }
 
-  const handleFinishConversation = () => {
+  const handleFinishConversation = async () => {
     if (peerConnection) {
+      await stopRecording();
       endRealtimeSession(peerConnection, dataChannel);
       setPeerConnection(null);
       setDataChannel(null);
@@ -208,7 +223,7 @@ export default function SimulatorPage() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{isRecording ? "Stop Conversation" : "Start Conversation"}</p>
+                  <p>{isRecording ? "Pause Conversation" : hasStartedRecording ? "Resume Conversation" : "Start Conversation"}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
