@@ -1,4 +1,3 @@
-// pages/api/realtime-session.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 
 export default async function handler(
@@ -21,6 +20,13 @@ export default async function handler(
       body: JSON.stringify({
         model: "gpt-4o-realtime-preview-2024-12-17",
         voice: "alloy",
+        instructions: "You are a helpful assistant.", // This is where we provide the Persona Instructions to the AI
+        input_audio_format: "pcm16",
+        output_audio_format: "pcm16",
+        input_audio_transcription: {
+          model: "whisper-1",
+          language: "en"
+        }
       }),
     });
 

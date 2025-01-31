@@ -1,5 +1,3 @@
-import { RefObject } from "react";
-
 export async function startRealtimeSession(rtcPeerConnection: RTCPeerConnection) {
     let dataChannel: RTCDataChannel | null = null;
 
@@ -14,7 +12,16 @@ export async function startRealtimeSession(rtcPeerConnection: RTCPeerConnection)
             audioEl.srcObject = e.streams[0];
         };
 
-        const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Configure audio input with proper settings for Whisper
+        const audioConstraints = {
+            audio: {
+                channelCount: 1, // Mono
+                sampleRate: 24000, // 24kHz
+                sampleSize: 16 // 16-bit
+            }
+        };
+
+        const ms = await navigator.mediaDevices.getUserMedia(audioConstraints);
         rtcPeerConnection.addTrack(ms.getTracks()[0]);
 
         dataChannel = rtcPeerConnection.createDataChannel("oai-events");
