@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { v4 as uuidv4} from "uuid";
 import { saveTranscript } from "@/lib/supabase/supabase-utils";
+import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { TranscriptEntry } from "@/types/transcript";
@@ -149,11 +150,39 @@ export default function SimulatorPage() {
     }
 
     try {        
-      await stopRecording();
+      const blob = await stopRecording();
+      if (!blob) {
+        throw new Error("Failed to get recording blob");
+      }
+
+      // Upload to Supabase Storage
+      const fileName = `${session_id}.webm`;
+      const { data: uploadData, error: uploadError } = await supabase
+        .storage
+        .from('mom-test-blobs')
+        .upload(fileName, blob, {
+          contentType: 'audio/webm',
+          upsert: true
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get the public URL
+      const { data: { publicUrl } } = supabase
+        .storage
+        .from('mom-test-blobs')
+        .getPublicUrl(fileName);
+
       endRealtimeSession(peerConnection, dataChannel);
       setPeerConnection(null);
       setDataChannel(null);
       setIsRecording(false);
+      if (!user) {
+        console.error('No user found, cannot save transcript');
+        return;
+      }
 
       const currentTime = new Date().toISOString();
       const transcriptData = {
@@ -161,6 +190,7 @@ export default function SimulatorPage() {
         user_id: user.id,
         session_id,
         entries: transcript,
+        recording_blob_url: publicUrl,
         updated_at: currentTime
       };
 
