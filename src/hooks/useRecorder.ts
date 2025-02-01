@@ -14,7 +14,7 @@ interface UseRecorderReturn {
   startRecording: () => void;
   pauseRecording: () => Promise<void>;
   resumeRecording: () => void;
-  stopRecording: () => Promise<void>;
+  stopRecording: () => Promise<Blob | null>;
 }
 
 export function useRecorder({ stream }: UseRecorderProps): UseRecorderReturn {
@@ -50,31 +50,16 @@ export function useRecorder({ stream }: UseRecorderProps): UseRecorderReturn {
   };
 
   const stopRecording = async () => {
-    if (!recorderRef.current) return;
+    if (!recorderRef.current) return null;
 
     try {
       await recorderRef.current.stopRecording();
       const blob = await recorderRef.current.getBlob();
-      
-      const url = URL.createObjectURL(blob);
-
-      // TODO: This is temporary. We need to actually send this blob to the server instead
-      // of just downloading it. 
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = 'conversation.webm';
-      document.body.appendChild(a);
-      a.click();
-      
-      setTimeout(() => {
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      }, 100);
-
       recorderRef.current = null;
+      return blob;
     } catch (error) {
       console.error('Error stopping recording:', error);
+      return null;
     }
   };
 
