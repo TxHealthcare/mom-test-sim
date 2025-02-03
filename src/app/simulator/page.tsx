@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/tooltip";
 import dynamic from 'next/dynamic';
 import { startRealtimeSession, endRealtimeSession } from "./realtime-session-manager";
-import { Check } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import { useAudioMixer } from "@/hooks/useAudioMixer";
 import { useRecorder } from "@/hooks/useRecorder";
 
@@ -106,9 +106,8 @@ export default function SimulatorPage() {
         } else if (!peerConnection && !hasStartedRecording) {
           // Start new conversation
           const pc = new RTCPeerConnection();
-          setPeerConnection(pc);
-          
           const { dataChannel } = await startRealtimeSession(pc);
+          setPeerConnection(pc);
           setDataChannel(dataChannel);
 
           // Start recording only after peer connection is established
@@ -174,10 +173,10 @@ export default function SimulatorPage() {
         setDataChannel(null);
         setIsRecording(false);
 
-        if (!user) {
-          console.log('No user found, cannot save transcript');
-          return;
-        }
+      if (!user) {
+        console.log('No user found, cannot save transcript');
+        return;
+      }
 
         const currentTime = new Date().toISOString();
         const transcriptData = {
@@ -190,14 +189,14 @@ export default function SimulatorPage() {
           updated_at: currentTime
         };
 
-        const result = await saveTranscript(transcriptData);
-        console.log('Transcript save result:', result);
+      const result = await saveTranscript(transcriptData);
+      console.log('Transcript save result:', result);
 
-        const analysis = await fetch('/api/analyze-transcript', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ transcript })
-        }).then(res => res.json());
+      const analysis = await fetch('/api/analyze-transcript', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript })
+      }).then(res => res.json());
 
         console.log('Transcript analysis:', analysis);
       } catch (error) {
@@ -327,47 +326,62 @@ export default function SimulatorPage() {
             </div>
           )}
         </div>
-        <div className="h-[200px] bg-muted/50 mt-8 rounded-lg flex items-center justify-between px-8"> 
-          <div className="flex-1" /> {/* Spacer */}
-          <div className="flex items-center justify-center">
+        <div className="h-[200px] bg-muted/50 mt-8 rounded-lg flex items-center justify-center"> 
+          <div className="relative">
+            {hasStartedRecording && (
+              <div className="absolute -left-20 top-1/2 -translate-y-1/2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className={`transition-all duration-300 ${
+                          isRecording 
+                            ? "bg-gray-500 hover:bg-gray-600 h-12 w-12 rounded-full" 
+                            : "bg-red-600 hover:bg-red-700 h-12 w-12 rounded-full"
+                        }`}
+                        onClick={handleRecordingToggle}
+                      >
+                        {isRecording ? <Pause color="white" fill="white" className="h-5 w-5" /> : <Play color="white" fill="white" className="h-8 w-8" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{isRecording ? "Pause Conversation" : "Resume Conversation"}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            )}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="default"
-                    className={`bg-red-600 hover:bg-red-700 transition-all duration-300 ${isRecording ? "h-12 w-12 rounded-lg" : "h-16 w-16 rounded-full"}`}
-                    onClick={handleRecordingToggle}
-                    disabled={microphoneState.isBlocked}
-                  >
-                  </Button>
+                  <div className="relative w-[72px] h-[72px]">
+                    <div className="absolute inset-0 rounded-full border-4 border-white" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Button
+                        variant="outline"
+                        size="default"
+                        className={`bg-red-600 hover:bg-red-700 transition-all duration-300 ${
+                          !!peerConnection
+                            ? "h-10 w-10 rounded-lg" 
+                            : "h-16 w-16 rounded-full"
+                        }`}
+                        onClick={!!peerConnection ? handleFinishConversation : handleRecordingToggle}
+                        disabled={microphoneState.isBlocked}
+                      />
+                    </div>
+                  </div>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{isRecording ? "Pause Conversation" : hasStartedRecording ? "Resume Conversation" : "Start Conversation"}</p>
+                  <p>
+                    {!!peerConnection
+                      ? "End Conversation" 
+                      : "Start Conversation"}
+                  </p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-          </div>
-          <div className="flex-1 flex justify-end">
-            {hasStartedRecording && !isRecording && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="bg-accent hover:bg-accent/90 h-12 w-12 rounded-full"
-                      onClick={handleFinishConversation}
-                    >
-                      <Check className="h-20 w-20 text-accent-foreground" strokeWidth={5} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Finish Conversation</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
           </div>
         </div>
       </main>
