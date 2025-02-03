@@ -8,6 +8,12 @@ export async function saveTranscript(transcriptData: Partial<Transcript>) {
   if (!session) {
     throw new Error('No authenticated session found');
   }
+export async function saveTranscript(transcriptData: Partial<Transcript>) {
+  // Check authentication status
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('No authenticated session found');
+  }
 
   const { data, error } = await supabase
     .from('transcripts')
