@@ -1,5 +1,6 @@
 import { supabase } from "./client";
 import type { Transcript } from "@/types/transcript";
+import type { Transcript } from "@/types/transcript";
 
 export async function saveTranscript(transcriptData: Partial<Transcript>) {
   // Check authentication status
@@ -13,6 +14,8 @@ export async function saveTranscript(transcriptData: Partial<Transcript>) {
     .upsert(transcriptData)
     .select();
 
+  if (error) throw error;
+  return data;
   if (error) throw error;
   return data;
 }
