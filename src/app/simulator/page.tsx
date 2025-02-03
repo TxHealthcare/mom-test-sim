@@ -17,6 +17,7 @@ import { startRealtimeSession, endRealtimeSession } from "./realtime-session-man
 import { Pause, Play } from "lucide-react";
 import { useAudioMixer } from "@/hooks/useAudioMixer";
 import { useRecorder } from "@/hooks/useRecorder";
+import { useSearchParams, useRouter } from "next/navigation";
 
 const AudioVisualizer = dynamic(() => import('@/components/AudioVisualizer'), {
   ssr: false
@@ -53,8 +54,10 @@ interface MicrophoneState {
 let didRequestInitialMic = false;
 
 export default function SimulatorPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const session_id = searchParams?.get('session_id') ?? null;
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
-  const [session_id] = useState(() => uuidv4());
   const { user } = useAuth();
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -140,26 +143,24 @@ export default function SimulatorPage() {
   };
 
   const handleFinishConversation = async () => {
-    if (peerConnection) {
-      try {        
-        await stopRecording();
-        endRealtimeSession(peerConnection, dataChannel);
-        setPeerConnection(null);
-        setDataChannel(null);
-        setIsRecording(false);
+    if (!peerConnection || !session_id || !user) {
+      console.error("Missing required data");
+      return;
+    }
 
-      if (!user) {
-        console.log('No user found, cannot save transcript');
-        return;
-      }
+    try {        
+      await stopRecording();
+      endRealtimeSession(peerConnection, dataChannel);
+      setPeerConnection(null);
+      setDataChannel(null);
+      setIsRecording(false);
 
       const currentTime = new Date().toISOString();
       const transcriptData = {
-        id: uuidv4(),
+        id: session_id,
         user_id: user.id,
         session_id,
         entries: transcript,
-        created_at: currentTime,
         updated_at: currentTime
       };
 
@@ -172,12 +173,9 @@ export default function SimulatorPage() {
         body: JSON.stringify({ transcript })
       }).then(res => res.json());
 
-        console.log('Transcript analysis:', analysis);
-      } catch (error) {
-        console.error('Error in handleFinishConversation:', error);
-      }
-    } else {
-      console.error("No peer connection found");
+      console.log('Transcript analysis:', analysis);
+    } catch (error) {
+      console.error('Error in handleFinishConversation:', error);
     }
   };
 
@@ -273,6 +271,14 @@ export default function SimulatorPage() {
       }
     }
   };
+
+  // Redirect if no session_id
+  useEffect(() => {
+    if (!session_id) {
+      router.push('/simulator-onboarding');
+      return;
+    }
+  }, [session_id, router]);
 
   return (
     // We are forcing dark mode for the simulator.
