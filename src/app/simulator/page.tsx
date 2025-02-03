@@ -157,7 +157,7 @@ export default function SimulatorPage() {
 
       const currentTime = new Date().toISOString();
       const transcriptData = {
-        id: uuidv4(),
+        id: session_id,
         user_id: user.id,
         session_id,
         entries: transcript,
