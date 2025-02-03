@@ -16,13 +16,24 @@ export async function saveTranscript(transcript: Transcript) {
       throw new Error('No authenticated session found');
     }
 
-    const { data } = await supabase
+    // Ensure user_id matches the authenticated user
+    if (transcript.user_id !== session.user.id) {
+      throw new Error('User ID mismatch with authenticated user');
+    }
+
+    const { data, error } = await supabase
       .from('transcripts')
       .upsert([transcript])
       .select();
 
+    if (error) {
+      console.error('Error saving transcript:', error);
+      throw error;
+    }
+
     return data;
   } catch (error) {
+    console.error('Error in saveTranscript:', error);
     throw error;
   }
 }
