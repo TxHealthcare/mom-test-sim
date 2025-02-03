@@ -10,7 +10,7 @@ export async function saveTranscript(transcriptData: Partial<Transcript>) {
 
   const { data, error } = await supabase
     .from('transcripts')
-    .upsert(transcriptData)
+    .upsert([transcriptData])
     .select();
 
   if (error) throw error;
