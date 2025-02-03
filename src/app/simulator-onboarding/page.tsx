@@ -2,15 +2,22 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { v4 as uuidv4 } from "uuid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/AuthContext";
+import { saveTranscript } from "@/lib/supabase/supabase-utils";
 
 export default function SimulatorOnboardingPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [customerProfile, setCustomerProfile] = useState("");
   const [learningObjectives, setLearningObjectives] = useState(["", "", ""]);
+  const [session_id] = useState(() => uuidv4());
+
+  const hasRequiredFields = customerProfile.trim() && learningObjectives.some(obj => obj.trim());
 
   const handleLearningObjectiveChange = (index: number, value: string) => {
     setLearningObjectives(prev => {
@@ -20,12 +27,24 @@ export default function SimulatorOnboardingPage() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!customerProfile.trim()) return;
+    if (!hasRequiredFields || !user) return;
 
-    // TODO: Store these values in state/context for use in the simulator
-    router.push('/simulator');
+    try {
+      const transcriptData = {
+        id: session_id,
+        user_id: user.id,
+        session_id,
+        customer_profile: customerProfile.trim(),
+        objectives: learningObjectives.filter(obj => obj.trim()),
+      };
+
+      await saveTranscript(transcriptData);
+      router.push(`/simulator?session_id=${session_id}`);
+    } catch (error) {
+      console.error('Error saving transcript data:', error);
+    }
   };
 
   return (
