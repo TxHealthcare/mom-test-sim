@@ -161,7 +161,6 @@ export default function SimulatorPage() {
         user_id: user.id,
         session_id,
         entries: transcript,
-        created_at: currentTime,
         updated_at: currentTime
       };
 

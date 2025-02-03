@@ -15,4 +15,6 @@ export async function saveTranscript(transcriptData: Partial<Transcript>) {
 
   if (error) throw error;
   return data;
+  if (error) throw error;
+  return data;
 }
