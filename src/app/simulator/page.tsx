@@ -166,14 +166,7 @@ export default function SimulatorPage() {
 
       const result = await saveTranscript(transcriptData);
       console.log('Transcript save result:', result);
-      const result = await saveTranscript(transcriptData);
-      console.log('Transcript save result:', result);
 
-      const analysis = await fetch('/api/analyze-transcript', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript })
-      }).then(res => res.json());
       const analysis = await fetch('/api/analyze-transcript', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
