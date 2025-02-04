@@ -40,22 +40,6 @@ export default function Home() {
                       Features
                     </NavigationMenuLink>
                   </NavigationMenuItem>
-                  <NavigationMenuItem>
-                    <NavigationMenuLink
-                      href="#about"
-                      className={navigationMenuTriggerStyle()}
-                    >
-                      About
-                    </NavigationMenuLink>
-                  </NavigationMenuItem>
-                  <NavigationMenuItem>
-                    <NavigationMenuLink
-                      href="#get-started"
-                      className={navigationMenuTriggerStyle()}
-                    >
-                      Get Started
-                    </NavigationMenuLink>
-                  </NavigationMenuItem>
                 </NavigationMenuList>
               </NavigationMenu>
               <AuthButton />
@@ -112,7 +96,7 @@ export default function Home() {
         <section id="features" className="py-20 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Powerful Features</h2>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">What you get</h2>
               <p className="text-lg text-gray-600">Everything you need to improve your interview skills</p>
             </div>
             <div className="grid md:grid-cols-3 gap-8">
@@ -147,33 +131,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* About Section */}
-        <section id="about" className="py-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl mx-auto text-center">
-              <h2 className="text-3xl font-bold text-gray-900 mb-6">About Mom Test Simulator</h2>
-              <p className="text-lg text-gray-600 mb-8">
-                The Mom Test Simulator combines cutting-edge AI technology with proven interview
-                techniques to help entrepreneurs and product managers conduct better customer interviews.
-                Practice in a safe environment and get actionable feedback to improve your skills.
-              </p>
-              <ul className="space-y-4 text-left">
-                {[
-                  'Practice interviews without risk',
-                  'Get instant feedback on your technique',
-                  'Learn from AI-powered analysis',
-                  'Track your progress over time'
-                ].map((feature, index) => (
-                  <li key={index} className="flex items-center gap-3">
-                    <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-                    <span className="text-gray-700">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
-
         {/* CTA Section */}
         <section id="get-started" className="py-20 bg-blue-600">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -189,14 +146,14 @@ export default function Home() {
                 size="lg"
                 asChild
               >
-                <a href="/signup">Get Started Free</a>
+                <a href="/login">Get Started Free</a>
               </Button>
               <Button 
                 variant="secondary" 
                 size="lg"
                 asChild
               >
-                <a href="/learn-more">Learn More</a>
+                <a href="#features">Learn More</a>
               </Button>
             </div>
           </div>
@@ -206,41 +163,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="bg-gray-50 border-t">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="font-semibold mb-4">Product</h3>
-              <ul className="space-y-2">
-                <li><Button variant="link" asChild><a href="#">Features</a></Button></li>
-                <li><Button variant="link" asChild><a href="#">Pricing</a></Button></li>
-                <li><Button variant="link" asChild><a href="#">Demo</a></Button></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-4">Resources</h3>
-              <ul className="space-y-2">
-                <li><Button variant="link" asChild><a href="#">Documentation</a></Button></li>
-                <li><Button variant="link" asChild><a href="#">Guides</a></Button></li>
-                <li><Button variant="link" asChild><a href="#">Support</a></Button></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-4">Company</h3>
-              <ul className="space-y-2">
-                <li><Button variant="link" asChild><a href="#">About</a></Button></li>
-                <li><Button variant="link" asChild><a href="#">Blog</a></Button></li>
-                <li><Button variant="link" asChild><a href="#">Careers</a></Button></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-4">Legal</h3>
-              <ul className="space-y-2">
-                <li><Button variant="link" asChild><a href="#">Privacy</a></Button></li>
-                <li><Button variant="link" asChild><a href="#">Terms</a></Button></li>
-                <li><Button variant="link" asChild><a href="#">Security</a></Button></li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-12 pt-8 border-t text-center text-gray-600">
+          <div className="mt-12 pt-8 text-center text-gray-600">
             <p>&copy; {new Date().getFullYear()} Mom Test Simulator. All rights reserved.</p>
           </div>
         </div>

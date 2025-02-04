@@ -34,22 +34,6 @@ export default function LoginPage() {
                       Features
                     </NavigationMenuLink>
                   </NavigationMenuItem>
-                  <NavigationMenuItem>
-                    <NavigationMenuLink
-                      href="/#about"
-                      className={navigationMenuTriggerStyle()}
-                    >
-                      About
-                    </NavigationMenuLink>
-                  </NavigationMenuItem>
-                  <NavigationMenuItem>
-                    <NavigationMenuLink
-                      href="/#get-started"
-                      className={navigationMenuTriggerStyle()}
-                    >
-                      Get Started
-                    </NavigationMenuLink>
-                  </NavigationMenuItem>
                 </NavigationMenuList>
               </NavigationMenu>
               <AuthButton />
