@@ -15,6 +15,7 @@ import { AuthButton } from '@/components/AuthHeader'
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import NavigationHeader from '@/components/NavigationHeader';
 
 export default function Home() {
   const router = useRouter();
@@ -22,31 +23,7 @@ export default function Home() {
 
   return (
     <div className="grid grid-rows-[auto_1fr_auto] min-h-screen bg-white">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur-sm">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <h1 className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-2xl font-bold text-transparent">
-              Mom Test Simulator
-            </h1>
-            <div className="flex items-center gap-8">
-              <NavigationMenu>
-                <NavigationMenuList>
-                  <NavigationMenuItem>
-                    <NavigationMenuLink
-                      href="#features"
-                      className={navigationMenuTriggerStyle()}
-                    >
-                      Features
-                    </NavigationMenuLink>
-                  </NavigationMenuItem>
-                </NavigationMenuList>
-              </NavigationMenu>
-              <AuthButton />
-            </div>
-          </div>
-        </div>
-      </header>
+      <NavigationHeader />
 
       {/* Main Content */}
       <main className="flex-1">
