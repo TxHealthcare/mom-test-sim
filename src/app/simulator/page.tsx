@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { v4 as uuidv4} from "uuid";
 import { saveTranscript } from "@/lib/supabase/supabase-utils";
@@ -53,7 +54,8 @@ interface MicrophoneState {
 
 let didRequestInitialMic = false;
 
-export default function SimulatorPage() {
+// Component that uses useSearchParams
+function SimulatorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const session_id = searchParams?.get('session_id') ?? null;
@@ -366,5 +368,28 @@ export default function SimulatorPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+// Main page component
+export default function SimulatorPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background dark">
+        <main className="container mx-auto p-8 flex flex-col h-[calc(100vh-4rem)]">
+          <div className="flex-1 bg-muted/50 rounded-lg p-4">
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <p className="text-muted-foreground mb-4">
+                  Loading...
+                </p>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    }>
+      <SimulatorContent />
+    </Suspense>
   );
 } 
