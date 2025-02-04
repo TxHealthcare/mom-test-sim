@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { v4 as uuidv4} from "uuid";
-import { saveTranscript } from "@/lib/supabase/supabase-utils";
+import { saveTranscript, uploadRecordingBlob } from "@/lib/supabase/supabase-utils";
 import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -155,36 +155,8 @@ export default function SimulatorPage() {
         throw new Error("Failed to get recording blob");
       }
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No authenticated session found');
-      }
-
-      const fileName = `${session.user.id}/${session_id}.webm`;
-      const { data: uploadData, error: uploadError } = await supabase
-        .storage
-        .from('mom-test-blobs')
-        .upload(fileName, blob, {
-          contentType: 'audio/webm',
-          upsert: true,
-          duplex: 'half'
-        });
-
-      if (uploadError) {
-        console.error('Upload error details:', {
-          error: uploadError,
-          fileName,
-          userId: session.user.id,
-          sessionId: session_id
-        });
-        throw uploadError;
-      }
-
-      // Get the public URL
-      const { data: { publicUrl } } = supabase
-        .storage
-        .from('mom-test-blobs')
-        .getPublicUrl(fileName);
+        // Upload the recording blob and get the public URL
+        const publicUrl = await uploadRecordingBlob(blob, session_id);
 
       endRealtimeSession(peerConnection, dataChannel);
       setPeerConnection(null);
@@ -205,14 +177,14 @@ export default function SimulatorPage() {
         updated_at: currentTime
       };
 
-      const result = await saveTranscript(transcriptData);
-      console.log('Transcript save result:', result);
+        const result = await saveTranscript(transcriptData);
+        console.log('Transcript save result:', result);
 
-      const analysis = await fetch('/api/analyze-transcript', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript })
-      }).then(res => res.json());
+        const analysis = await fetch('/api/analyze-transcript', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transcript })
+        }).then(res => res.json());
 
       console.log('Transcript analysis:', analysis);
     } catch (error) {
