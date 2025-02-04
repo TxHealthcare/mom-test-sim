@@ -82,7 +82,7 @@ export default function SimulatorOnboardingPage() {
               {learningObjectives.map((objective, index) => (
                 <div key={index} className="space-y-2">
                   <Label htmlFor={`objective-${index}`}>
-                    Objective {index + 1} {index === 0 && <span className="text-red-500">*</span>}
+                    Objective {index + 1}
                   </Label>
                   <Input
                     id={`objective-${index}`}
