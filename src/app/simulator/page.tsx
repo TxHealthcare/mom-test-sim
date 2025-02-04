@@ -3,7 +3,8 @@
 import { Suspense } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { v4 as uuidv4} from "uuid";
-import { saveTranscript } from "@/lib/supabase/supabase-utils";
+import { saveTranscript, uploadRecordingBlob } from "@/lib/supabase/supabase-utils";
+import { supabase } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { TranscriptEntry } from "@/types/transcript";
@@ -60,7 +61,7 @@ function SimulatorContent() {
   const searchParams = useSearchParams();
   const session_id = searchParams?.get('session_id') ?? null;
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -84,6 +85,20 @@ function SimulatorContent() {
   } = useRecorder({
     stream: mergedStream
   });
+
+  // Check authentication and session_id
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+      return;
+    }
+    if (!session_id) {
+      router.push('/simulator-onboarding');
+      return;
+    }
+  }, [user, loading, session_id, router]);
+
+
 
   const handleRecordingToggle = async () => {
     const toggleTracks = (enabled: boolean) => {
@@ -151,11 +166,22 @@ function SimulatorContent() {
     }
 
     try {        
-      await stopRecording();
+      const blob = await stopRecording();
+      if (!blob) {
+        throw new Error("Failed to get recording blob");
+      }
+
+        // Upload the recording blob and get the public URL
+        const publicUrl = await uploadRecordingBlob(blob, session_id);
+
       endRealtimeSession(peerConnection, dataChannel);
       setPeerConnection(null);
       setDataChannel(null);
       setIsRecording(false);
+      if (!user) {
+        console.error('No user found, cannot save transcript');
+        return;
+      }
 
       const currentTime = new Date().toISOString();
       const transcriptData = {
@@ -163,22 +189,30 @@ function SimulatorContent() {
         user_id: user.id,
         session_id,
         entries: transcript,
+        recording_blob_url: publicUrl,
         updated_at: currentTime
       };
 
-      const result = await saveTranscript(transcriptData);
-      console.log('Transcript save result:', result);
+        const result = await saveTranscript(transcriptData);
+        console.log('Transcript save result:', result);
 
-      const analysis = await fetch('/api/analyze-transcript', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript })
-      }).then(res => res.json());
+        const analysis = await fetch('/api/analyze-transcript', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transcript })
+        }).then(res => res.json());
 
-      console.log('Transcript analysis:', analysis);
-    } catch (error) {
-      console.error('Error in handleFinishConversation:', error);
-    }
+        console.log('Transcript analysis:', analysis);
+      } catch (error) {
+        if (peerConnection) {
+          peerConnection.close();
+        }
+        setPeerConnection(null);
+        setDataChannel(null);
+        setIsRecording(false);
+        
+        console.error('Error in handleFinishConversation:', error);
+      }
   };
 
   useEffect(() => {
@@ -281,6 +315,14 @@ function SimulatorContent() {
       return;
     }
   }, [session_id, router]);
+
+  if (loading) {
+    return <div className="dark flex items-center justify-center h-screen">Loading...</div>;
+  }
+  
+  if (!user || !session_id) {
+    return null;
+  }
 
   return (
     // We are forcing dark mode for the simulator.
