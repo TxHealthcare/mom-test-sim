@@ -12,8 +12,14 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 import { AuthButton } from '@/components/AuthHeader'
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 export default function Home() {
+  const router = useRouter();
+  const { user } = useAuth();
+
   return (
     <div className="grid grid-rows-[auto_1fr_auto] min-h-screen bg-white">
       {/* Header */}
@@ -78,8 +84,11 @@ export default function Home() {
                   <Button 
                     size="lg"
                     onClick={() => {
-                      const chatSection = document.getElementById('chat-section');
-                      chatSection?.scrollIntoView({ behavior: 'smooth' });
+                      if (user) {
+                        router.push('/simulator-onboarding');
+                      } else {
+                        router.push('/login');
+                      }
                     }}
                   >
                     Try it now <ArrowRight />
@@ -88,10 +97,12 @@ export default function Home() {
               </div>
               
               {/* Right side - Chat Interface */}
-              <div id="chat-section" className="relative">
-                <div className="bg-white rounded-2xl shadow-xl p-1">
-                  <RealtimeChat />
-                </div>
+              <div id="gif-section" className="relative">
+                <DotLottieReact
+                  src="https://lottie.host/4b9084a6-6cff-4f13-a31d-a9d914e45fb4/ljH5zlmQrY.lottie"
+                  loop
+                  autoplay
+                />
               </div>
             </div>
           </div>
