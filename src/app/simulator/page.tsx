@@ -61,7 +61,7 @@ function SimulatorContent() {
   const searchParams = useSearchParams();
   const session_id = searchParams?.get('session_id') ?? null;
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -85,6 +85,20 @@ function SimulatorContent() {
   } = useRecorder({
     stream: mergedStream
   });
+
+  // Check authentication and session_id
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+      return;
+    }
+    if (!session_id) {
+      router.push('/simulator-onboarding');
+      return;
+    }
+  }, [user, loading, session_id, router]);
+
+
 
   const handleRecordingToggle = async () => {
     const toggleTracks = (enabled: boolean) => {
@@ -188,10 +202,17 @@ function SimulatorContent() {
           body: JSON.stringify({ transcript })
         }).then(res => res.json());
 
-      console.log('Transcript analysis:', analysis);
-    } catch (error) {
-      console.error('Error in handleFinishConversation:', error);
-    }
+        console.log('Transcript analysis:', analysis);
+      } catch (error) {
+        if (peerConnection) {
+          peerConnection.close();
+        }
+        setPeerConnection(null);
+        setDataChannel(null);
+        setIsRecording(false);
+        
+        console.error('Error in handleFinishConversation:', error);
+      }
   };
 
   useEffect(() => {
@@ -294,6 +315,14 @@ function SimulatorContent() {
       return;
     }
   }, [session_id, router]);
+
+  if (loading) {
+    return <div className="dark flex items-center justify-center h-screen">Loading...</div>;
+  }
+  
+  if (!user || !session_id) {
+    return null;
+  }
 
   return (
     // We are forcing dark mode for the simulator.
