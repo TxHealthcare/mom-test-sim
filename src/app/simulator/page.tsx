@@ -157,17 +157,28 @@ function SimulatorContent() {
         throw new Error("Failed to get recording blob");
       }
 
-      // Upload to Supabase Storage
-      const fileName = `${session_id}.webm`;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No authenticated session found');
+      }
+
+      const fileName = `${session.user.id}/${session_id}.webm`;
       const { data: uploadData, error: uploadError } = await supabase
         .storage
         .from('mom-test-blobs')
         .upload(fileName, blob, {
           contentType: 'audio/webm',
-          upsert: true
+          upsert: true,
+          duplex: 'half'
         });
 
       if (uploadError) {
+        console.error('Upload error details:', {
+          error: uploadError,
+          fileName,
+          userId: session.user.id,
+          sessionId: session_id
+        });
         throw uploadError;
       }
 
