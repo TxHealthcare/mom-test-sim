@@ -58,3 +58,20 @@ export async function saveTranscript(transcriptData: Partial<Transcript>) {
   if (error) throw error;
   return data;
 }
+
+export async function getCustomerProfileBySessionId(session_id: string): Promise<string> {
+  try {
+    const { data, error } = await supabase
+      .from('transcripts')
+      .select('customer_profile')
+      .eq('session_id', session_id);
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error('No transcript found for this session ID');
+    }
+    return data[0].customer_profile;
+  } catch (error) {
+    console.error('Error in getTranscriptBySessionId:', error);
+    throw error;
+  }
+}

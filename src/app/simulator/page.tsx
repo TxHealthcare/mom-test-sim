@@ -125,7 +125,11 @@ function SimulatorContent() {
         } else if (!peerConnection && !hasStartedRecording) {
           // Start new conversation
           const pc = new RTCPeerConnection();
-          const { dataChannel } = await startRealtimeSession(pc);
+          if (!session_id) {
+            // This should never happen. We would redirect to simulator-onboarding.
+            throw new Error('No session_id found');
+          }
+          const { dataChannel } = await startRealtimeSession(pc, session_id);
           setPeerConnection(pc);
           setDataChannel(dataChannel);
 
