@@ -55,6 +55,15 @@ export async function saveTranscript(transcriptData: Partial<Transcript>) {
 
   if (error) throw error;
   return data;
+}
+
+export async function fetchInterviews(userId: string) {
+  const { data, error } = await supabase
+    .from('transcripts')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
   if (error) throw error;
   return data;
 }
@@ -74,4 +83,41 @@ export async function getCustomerProfileBySessionId(session_id: string): Promise
     console.error('Error in getTranscriptBySessionId:', error);
     throw error;
   }
+
+export async function downloadTranscript(interview: { id: string, entries?: Array<{ role: string, content: string }> }) {
+  if (!interview.entries) return;
+
+  const transcriptText = interview.entries
+    .map(entry => `${entry.role}: ${entry.content}`)
+    .join('\n\n');
+
+  const blob = new Blob([transcriptText], { type: 'text/plain' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `transcript-${interview.id}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+}
+
+export async function downloadAudio(interview: { session_id: string, id: string }, userId: string) {
+  if (!userId) throw new Error('User ID is required');
+
+  const { data, error } = await supabase.storage
+    .from('mom-test-blobs')
+    .download(`${userId}/${interview.session_id}.webm`);
+
+  if (error) throw error;
+
+  const url = window.URL.createObjectURL(data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `interview-${interview.id}.webm`;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+
 }
