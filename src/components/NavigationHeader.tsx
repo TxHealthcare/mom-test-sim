@@ -9,8 +9,11 @@ import {
 } from "@/components/ui/navigation-menu";
 import { AuthButton } from '@/components/AuthHeader';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function NavigationHeader() {
+  const { user } = useAuth();
+
   return (
     <header className="sticky top-0 z-50 border-b bg-white/80 backdrop-blur-sm">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -31,6 +34,16 @@ export default function NavigationHeader() {
                     Features
                   </NavigationMenuLink>
                 </NavigationMenuItem>
+                {user && (
+                  <NavigationMenuItem>
+                    <NavigationMenuLink
+                      href="/dashboard"
+                      className={navigationMenuTriggerStyle()}
+                    >
+                      Dashboard
+                    </NavigationMenuLink>
+                  </NavigationMenuItem>
+                )}
               </NavigationMenuList>
             </NavigationMenu>
             <AuthButton />
