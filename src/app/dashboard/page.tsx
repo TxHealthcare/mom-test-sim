@@ -1,12 +1,13 @@
- "use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import NavigationHeader from "@/components/NavigationHeader";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, FileAudio, FileText } from "lucide-react";
+import { ArrowRight, FileAudio, FileText, UserCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
+import { fetchInterviews, downloadTranscript, downloadAudio } from "@/lib/supabase/supabase-utils";
 import Image from "next/image";
 
 interface Interview {
@@ -41,14 +42,41 @@ export default function DashboardPage() {
       router.push('/login');
       return;
     }
-  }, [user, loading, router]);
 
-  useEffect(() => {
-    if (user) {
-      fetchInterviews();
+    // If user is authenticated, fetch data
+    if (!loading && user) {
+      loadInterviews();
       fetchUserIdentity();
     }
-  }, [user]);
+  }, [user, loading, router]);
+
+  const loadInterviews = async () => {
+    try {
+      if (!user?.id) return;
+      const data = await fetchInterviews(user.id);
+      setInterviews(data || []);
+      setTotalInterviews(data?.length || 0);
+    } catch (error) {
+      console.error('Error loading interviews:', error);
+    }
+  };
+
+  const handleDownloadTranscript = async (interview: Interview) => {
+    try {
+      await downloadTranscript(interview);
+    } catch (error) {
+      console.error('Error downloading transcript:', error);
+    }
+  };
+
+  const handleDownloadAudio = async (interview: Interview) => {
+    try {
+      if (!user?.id) return;
+      await downloadAudio(interview, user.id);
+    } catch (error) {
+      console.error('Error downloading audio:', error);
+    }
+  };
 
   const fetchUserIdentity = async () => {
     try {
@@ -59,13 +87,13 @@ export default function DashboardPage() {
       if (userData?.user_metadata) {
         setUserIdentity({
           name: userData.user_metadata.full_name || userData.user_metadata.name || user?.email,
-          picture: userData.user_metadata.avatar_url || userData.user_metadata.picture || ''
+          picture: userData.user_metadata.avatar_url || userData.user_metadata.picture || '/default-avatar.png'
         });
       } else {
         // Fallback to email if no metadata
         setUserIdentity({
           name: user?.email || '',
-          picture: ''
+          picture: '/default-avatar.png'
         });
       }
     } catch (error) {
@@ -73,67 +101,8 @@ export default function DashboardPage() {
       // Fallback to email if identity fetch fails
       setUserIdentity({
         name: user?.email || '',
-        picture: ''
+        picture: '/default-avatar.png'
       });
-    }
-  };
-
-  const fetchInterviews = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('transcripts')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setInterviews(data || []);
-      setTotalInterviews(data?.length || 0);
-    } catch (error) {
-      console.error('Error fetching interviews:', error);
-    }
-  };
-
-  const downloadTranscript = (interview: Interview) => {
-    if (!interview.entries) return;
-
-    const transcriptText = interview.entries
-      .map(entry => `${entry.role}: ${entry.content}`)
-      .join('\n\n');
-
-    const blob = new Blob([transcriptText], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `transcript-${interview.id}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-  };
-
-  const downloadAudio = async (interview: Interview) => {
-    try {
-      if (!interview.recording_blob_url) return;
-
-      const { data, error } = await supabase.storage
-        .from('mom-test-blobs')
-        .download(`${user?.id}/${interview.session_id}.webm`);
-
-      if (error) {
-        throw error;
-      }
-
-      const url = window.URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `interview-${interview.id}.webm`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Error downloading audio:', error);
     }
   };
 
@@ -162,7 +131,7 @@ export default function DashboardPage() {
         <div className="mb-12">
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
             <div className="flex items-start gap-6">
-              {userIdentity?.picture && (
+              {userIdentity?.picture ? (
                 <div className="flex-shrink-0">
                   <div className="relative w-16 h-16 rounded-full overflow-hidden">
                     <Image
@@ -174,6 +143,10 @@ export default function DashboardPage() {
                       className="object-cover"
                     />
                   </div>
+                </div>
+              ) : (
+                <div className="flex-shrink-0">
+                  <UserCircle className="w-16 h-16 text-gray-400" />
                 </div>
               )}
               <div className="flex-1">
@@ -232,7 +205,7 @@ export default function DashboardPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {interview.entries ? (
                           <button
-                            onClick={() => downloadTranscript(interview)}
+                            onClick={() => handleDownloadTranscript(interview)}
                             className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
                           >
                             <FileText className="h-4 w-4" />
@@ -245,7 +218,7 @@ export default function DashboardPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {interview.recording_blob_url ? (
                           <button
-                            onClick={() => downloadAudio(interview)}
+                            onClick={() => handleDownloadAudio(interview)}
                             className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
                           >
                             <FileAudio className="h-4 w-4" />
