@@ -83,6 +83,7 @@ export async function getCustomerProfileBySessionId(session_id: string): Promise
     console.error('Error in getTranscriptBySessionId:', error);
     throw error;
   }
+}
 
 export async function downloadTranscript(interview: { id: string, entries?: Array<{ role: string, content: string }> }) {
   if (!interview.entries) return;
@@ -119,5 +120,4 @@ export async function downloadAudio(interview: { session_id: string, id: string 
   a.click();
   window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
-
 }
