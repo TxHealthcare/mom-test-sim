@@ -18,34 +18,11 @@ import { Pause, Play } from "lucide-react";
 import { useAudioMixer } from "@/hooks/useAudioMixer";
 import { useRecorder } from "@/hooks/useRecorder";
 import { useSearchParams, useRouter } from "next/navigation";
+import { RealtimeEvent } from "@/types/realtime";
 
 const AudioVisualizer = dynamic(() => import('@/components/AudioVisualizer'), {
   ssr: false
 });
-
-// TODO: move this to another file.
-interface RealtimeEvent {
-  type: string;
-  response?: {
-    modalities: string[];
-    instructions: string;
-    content?: string;
-  };
-  event_id?: string;
-  response_id?: string;
-  delta?: string;
-  audio_data?: Uint8Array;
-  transcript?: string;
-  input_audio_transcription?: string;
-  text?: string;
-  output?: Array<{
-    content: Array<{
-      type: string;
-      transcript?: string;
-    }>;
-  }>;
-  [key: string]: unknown;
-}
 
 interface MicrophoneState {
   isBlocked: boolean;
