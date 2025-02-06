@@ -1,4 +1,4 @@
-import { TranscriptEntry } from '@/types/transcript';
+import { TranscriptEntry } from '@/types/interview';
 import { NextApiRequest, NextApiResponse } from 'next';
 import { OpenAI } from 'openai';
 
