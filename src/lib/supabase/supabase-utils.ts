@@ -1,6 +1,14 @@
 import { supabase } from "./client";
 import { Transcript } from "../../types/transcript";
 
+const TRUNCATE_LENGTH = 240;
+
+function truncateText(text: string) {
+  if (!text) return '';
+  if (text.length <= TRUNCATE_LENGTH) return text;
+  return text.slice(0, TRUNCATE_LENGTH).trim() + '...';
+}
+
 export async function uploadRecordingBlob(blob: Blob, session_id: string): Promise<string> {
   try {
     // Check authentication status
@@ -65,7 +73,12 @@ export async function fetchInterviews(userId: string) {
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data;
+
+  return data?.map(interview => ({
+    ...interview,
+    customer_profile_truncated: truncateText(interview.customer_profile),
+    customer_profile_full: interview.customer_profile
+  }));
 }
 
 export async function downloadTranscript(interview: { id: string, entries?: Array<{ role: string, content: string }> }) {

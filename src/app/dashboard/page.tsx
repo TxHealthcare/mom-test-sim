@@ -9,6 +9,7 @@ import { ArrowRight, FileAudio, FileText, UserCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { fetchInterviews, downloadTranscript, downloadAudio } from "@/lib/supabase/supabase-utils";
 import Image from "next/image";
+import { ExpandableText } from "./components/ExpandableText";
 
 interface Interview {
   id: string;
@@ -188,9 +189,9 @@ export default function DashboardPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatDate(interview.created_at)}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        <div className="max-w-xs overflow-hidden text-ellipsis">
-                          {interview.customer_profile}
+                      <td className="px-6 py-4">
+                        <div className="max-w-xs">
+                          <ExpandableText text={interview.customer_profile || ''} />
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
