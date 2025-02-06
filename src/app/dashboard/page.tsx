@@ -80,7 +80,7 @@ Evaluated At: ${new Date(evaluation.evaluatedAt).toLocaleString()}
             <span className="font-semibold">{grade}/5</span>
           </div>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-.5 ">
           <Button
             variant="ghost"
             size="sm"
@@ -93,7 +93,7 @@ Evaluated At: ${new Date(evaluation.evaluatedAt).toLocaleString()}
             variant="ghost"
             size="sm"
             onClick={handleDownloadEvaluation}
-            className="text-blue-600 hover:text-blue-800 p-0 h-6 w-6"
+            className="text-blue-600 hover:text-blue-800 p-0 h-6 w-6 hover:bg-blue-100"
           >
             <Download className="h-4 w-4" />
           </Button>
@@ -273,9 +273,9 @@ export default function DashboardPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Profile</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Objectives</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Evaluation</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transcript</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recording</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Evaluation</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Transcript</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Recording</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -298,16 +298,16 @@ export default function DashboardPage() {
                           ))}
                         </ul>
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-4 py-4 text-center">
                         <div className="inline-block">
                           <EvaluationDisplay evaluation={interview.evaluation} />
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-4 py-4 text-center text-sm">
                         {interview.entries ? (
                           <button
                             onClick={() => handleDownloadTranscript(interview)}
-                            className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+                            className="text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
                           >
                             <FileText className="h-4 w-4" />
                             <span>Download</span>
@@ -316,11 +316,11 @@ export default function DashboardPage() {
                           <span className="text-gray-400">Not available yet</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-4 py-4 text-center text-sm">
                         {interview.recording_blob_url ? (
                           <button
                             onClick={() => handleDownloadAudio(interview)}
-                            className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+                            className="text-blue-600 hover:text-blue-800 inline-flex items-center gap-1 mx-auto"
                           >
                             <FileAudio className="h-4 w-4" />
                             <span>Download</span>
