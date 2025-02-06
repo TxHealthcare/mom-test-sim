@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { saveTranscript, uploadRecordingBlob, getCustomerProfileBySessionId } from "@/lib/supabase/supabase-utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { TranscriptEntry, EvaluationData } from "@/types/transcript";
+import { TranscriptEntry, EvaluationData } from "@/types/interview";
 import {
   Tooltip,
   TooltipContent,
@@ -23,6 +23,7 @@ const AudioVisualizer = dynamic(() => import('@/components/AudioVisualizer'), {
   ssr: false
 });
 
+// TODO: move this to another file.
 interface RealtimeEvent {
   type: string;
   response?: {

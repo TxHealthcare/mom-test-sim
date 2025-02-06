@@ -1,5 +1,5 @@
 import { supabase } from "./client";
-import { Transcript, EvaluationData } from "../../types/transcript";
+import { EvaluationData, Interview } from "@/types/interview";
 
 const TRUNCATE_LENGTH = 240;
 
@@ -49,7 +49,7 @@ export async function uploadRecordingBlob(blob: Blob, session_id: string): Promi
   }
 }
 
-export async function saveTranscript(transcriptData: Partial<Transcript>) {
+export async function saveTranscript(transcriptData: Partial<Interview>) {
   // Check authentication status
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {

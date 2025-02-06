@@ -10,26 +10,8 @@ import { supabase } from "@/lib/supabase/client";
 import { fetchInterviews, downloadTranscript, downloadAudio } from "@/lib/supabase/supabase-utils";
 import Image from "next/image";
 import { ExpandableText } from "./components/ExpandableText";
+import { Interview, EvaluationData } from "@/types/interview";
 
-interface Interview {
-  id: string;
-  session_id: string;
-  customer_profile: string;
-  objectives: string[];
-  recording_blob_url?: string;
-  evaluation?: {
-    generalAnalysis: string | null;
-    rubricAnalysis: string | null;
-    evaluatedAt: string;
-  };
-  entries?: Array<{
-    role: 'user' | 'assistant';
-    content: string;
-    timestamp: number;
-  }>;
-  created_at: string;
-  updated_at: string;
-}
 
 interface UserIdentity {
   name: string;
@@ -37,7 +19,7 @@ interface UserIdentity {
 }
 
 // Add a new component to display evaluation data
-function EvaluationDisplay({ evaluation }: { evaluation?: Interview['evaluation'] }) {
+function EvaluationDisplay({ evaluation }: { evaluation?: EvaluationData }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (!evaluation) {
@@ -129,7 +111,6 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const [interviews, setInterviews] = useState<Interview[]>([]);
-  const [totalInterviews, setTotalInterviews] = useState(0);
   const [userIdentity, setUserIdentity] = useState<UserIdentity | null>(null);
 
   useEffect(() => {
@@ -150,7 +131,6 @@ export default function DashboardPage() {
       if (!user?.id) return;
       const data = await fetchInterviews(user.id);
       setInterviews(data || []);
-      setTotalInterviews(data?.length || 0);
     } catch (error) {
       console.error('Error loading interviews:', error);
     }
@@ -249,7 +229,7 @@ export default function DashboardPage() {
                   Welcome, {userIdentity?.name || user.email}
                 </h2>
                 <p className="text-gray-600 mb-4">
-                  You have completed {totalInterviews} interview{totalInterviews !== 1 ? 's' : ''}.
+                  You have completed {interviews.length} interview{interviews.length !== 1 ? 's' : ''}.
                 </p>
                 <Button 
                   onClick={() => router.push('/simulator-onboarding')}
