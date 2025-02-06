@@ -125,7 +125,11 @@ function SimulatorContent() {
         } else if (!peerConnection && !hasStartedRecording) {
           // Start new conversation
           const pc = new RTCPeerConnection();
-          const { dataChannel } = await startRealtimeSession(pc);
+          if (!session_id) {
+            // This should never happen. We would redirect to simulator-onboarding.
+            throw new Error('No session_id found');
+          }
+          const { dataChannel } = await startRealtimeSession(pc, session_id);
           setPeerConnection(pc);
           setDataChannel(dataChannel);
 
@@ -171,48 +175,65 @@ function SimulatorContent() {
         throw new Error("Failed to get recording blob");
       }
 
-        // Upload the recording blob and get the public URL
-        const publicUrl = await uploadRecordingBlob(blob, session_id);
-
+      // End the session immediately
       endRealtimeSession(peerConnection, dataChannel);
       setPeerConnection(null);
       setDataChannel(null);
       setIsRecording(false);
-      if (!user) {
-        console.error('No user found, cannot save transcript');
-        return;
-      }
 
+      // Set initial transcript data
       const currentTime = new Date().toISOString();
       const transcriptData = {
         id: session_id,
         user_id: user.id,
         session_id,
         entries: transcript,
-        recording_blob_url: publicUrl,
         updated_at: currentTime
       };
 
-        const result = await saveTranscript(transcriptData);
-        console.log('Transcript save result:', result);
+      // Save initial transcript data
+      await saveTranscript(transcriptData);
+      
+      // Redirect to dashboard immediately
+      router.push('/dashboard');
+      
+      // Process the rest in the background
+      Promise.all([
+        // Upload recording
+        uploadRecordingBlob(blob, session_id)
+          .then(publicUrl => {
+            const updatedTranscriptData = {
+              ...transcriptData,
+              recording_blob_url: publicUrl,
+            };
+            return saveTranscript(updatedTranscriptData);
+          })
+          .catch(error => console.error('Error saving transcript:', error)),
 
-        const analysis = await fetch('/api/analyze-transcript', {
+        // Run analysis in parallel
+        fetch('/api/analyze-transcript', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ transcript })
-        }).then(res => res.json());
+        })
+          .then(res => res.json())
+          .then(analysis => console.log('Transcript analysis:', analysis))
+          .catch(error => console.error('Error analyzing transcript:', error))
+      ]).catch(error => {
+        console.error('Error in background tasks:', error);
+      });
 
-        console.log('Transcript analysis:', analysis);
-      } catch (error) {
-        if (peerConnection) {
-          peerConnection.close();
-        }
-        setPeerConnection(null);
-        setDataChannel(null);
-        setIsRecording(false);
-        
-        console.error('Error in handleFinishConversation:', error);
+    } catch (error) {
+      if (peerConnection) {
+        peerConnection.close();
       }
+      setPeerConnection(null);
+      setDataChannel(null);
+      setIsRecording(false);
+      
+      console.error('Error in handleFinishConversation:', error);
+      router.push('/dashboard');
+    }
   };
 
   useEffect(() => {

@@ -1,8 +1,12 @@
-export async function startRealtimeSession(rtcPeerConnection: RTCPeerConnection) {
+import { getCustomerProfileBySessionId } from "@/lib/supabase/supabase-utils";
+
+export async function startRealtimeSession(rtcPeerConnection: RTCPeerConnection, session_id: string) {
     let dataChannel: RTCDataChannel | null = null;
 
     try {
-        const tokenResponse = await fetch("/api/realtime-session");
+        const customerProfile = await getCustomerProfileBySessionId(session_id);
+        const encodedCustomerProfile = encodeURIComponent(customerProfile);
+        const tokenResponse = await fetch(`/api/realtime-session?customer_profile=${encodedCustomerProfile}`);
         const data = await tokenResponse.json();
         const EPHEMERAL_KEY = data.client_secret.value;
 
