@@ -4,7 +4,7 @@ export async function startRealtimeSession(rtcPeerConnection: RTCPeerConnection,
     let dataChannel: RTCDataChannel | null = null;
 
     try {
-        const customerProfile = await getCustomerProfileBySessionId(session_id);
+        const customerProfile = (await getCustomerProfileBySessionId(session_id)).customerProfile;
         const tokenResponse = await fetch(`/api/realtime-session`, {
             method: 'POST',
             headers: {
