@@ -2,12 +2,10 @@
 
 import { Suspense } from "react";
 import { useCallback, useEffect, useState } from "react";
-import { v4 as uuidv4} from "uuid";
-import { saveTranscript, uploadRecordingBlob } from "@/lib/supabase/supabase-utils";
-import { supabase } from "@/lib/supabase/client";
+import { saveTranscript, uploadRecordingBlob, getCustomerProfileBySessionId } from "@/lib/supabase/supabase-utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { TranscriptEntry } from "@/types/transcript";
+import { TranscriptEntry, EvaluationData } from "@/types/transcript";
 import {
   Tooltip,
   TooltipContent,
@@ -61,6 +59,8 @@ function SimulatorContent() {
   const searchParams = useSearchParams();
   const session_id = searchParams?.get('session_id') ?? null;
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
+  const [customerProfile, setCustomerProfile] = useState<string>('');
+  const [learningObjectives, setLearningObjectives] = useState<string[]>([]);
   const { user, loading } = useAuth();
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -85,6 +85,18 @@ function SimulatorContent() {
   } = useRecorder({
     stream: mergedStream
   });
+
+  // Fetch customer profile when session_id changes
+  useEffect(() => {
+    if (session_id) {
+      getCustomerProfileBySessionId(session_id)
+        .then(({ customerProfile, learningObjectives }) => {
+          setCustomerProfile(customerProfile);
+          setLearningObjectives(learningObjectives);
+        })
+        .catch((error: Error) => console.error('Error fetching data:', error));
+    }
+  }, [session_id]);
 
   // Check authentication and session_id
   useEffect(() => {
@@ -188,38 +200,79 @@ function SimulatorContent() {
         user_id: user.id,
         session_id,
         entries: transcript,
+        customer_profile: customerProfile,
         updated_at: currentTime
       };
 
-      // Save initial transcript data
+      // Save initial transcript data and redirect
       await saveTranscript(transcriptData);
-      
-      // Redirect to dashboard immediately
       router.push('/dashboard');
       
       // Process the rest in the background
       Promise.all([
         // Upload recording
         uploadRecordingBlob(blob, session_id)
-          .then(publicUrl => {
-            const updatedTranscriptData = {
-              ...transcriptData,
+          .then(async (publicUrl) => {
+            // Update with recording URL - include user_id for RLS
+            return saveTranscript({
+              id: session_id,
+              user_id: user.id,
               recording_blob_url: publicUrl,
-            };
-            return saveTranscript(updatedTranscriptData);
+            });
           })
-          .catch(error => console.error('Error saving transcript:', error)),
+          .catch(error => console.error('Error saving recording URL:', error)),
 
         // Run analysis in parallel
         fetch('/api/analyze-transcript', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ transcript })
+          body: JSON.stringify({ 
+            transcript,
+            session_id,
+            customer_profile: customerProfile,
+            learningObjectives: learningObjectives
+          })
         })
-          .then(res => res.json())
-          .then(analysis => console.log('Transcript analysis:', analysis))
-          .catch(error => console.error('Error analyzing transcript:', error))
-      ]).catch(error => {
+          .then(res => {
+            if (!res.ok) {
+              throw new Error('Analysis failed');
+            }
+            return res.json();
+          })
+          .then(async (analysis) => {
+            console.log('Transcript analysis:', analysis);
+            // Save the evaluation data - include user_id for RLS
+            const evaluationData: EvaluationData = {
+              generalAnalysis: analysis.generalAnalysis || null,
+              rubricAnalysis: analysis.rubricAnalysis || null,
+              evaluatedAt: analysis.evaluatedAt
+            };
+
+            // Update with evaluation - include user_id for RLS
+            const transcriptUpdate = {
+              id: session_id,
+              user_id: user.id,
+              session_id,
+              evaluation: evaluationData
+            };
+
+            console.log('Saving evaluation data:', transcriptUpdate);
+            return saveTranscript(transcriptUpdate);
+          })
+          .then(data => {
+            console.log('Evaluation saved successfully:', data);
+          })
+          .catch(error => {
+            console.error('Error analyzing or saving transcript:', error);
+          })
+      ])
+      .then(() => {
+        // All background tasks completed successfully
+        console.log('All data saved successfully');
+        // Force refresh the dashboard page
+        router.refresh();
+      })
+      .catch(error => {
         console.error('Error in background tasks:', error);
       });
 

@@ -1,5 +1,5 @@
 import { supabase } from "./client";
-import { Transcript } from "../../types/transcript";
+import { Transcript, EvaluationData } from "../../types/transcript";
 
 const TRUNCATE_LENGTH = 240;
 
@@ -56,12 +56,22 @@ export async function saveTranscript(transcriptData: Partial<Transcript>) {
     throw new Error('No authenticated session found');
   }
 
+  // Ensure evaluation is properly formatted as JSONB if it exists
+  const dataToSave = {
+    ...transcriptData,
+    updated_at: new Date().toISOString(),
+    evaluation: transcriptData.evaluation ? transcriptData.evaluation : undefined
+  };
+
   const { data, error } = await supabase
     .from('transcripts')
-    .upsert(transcriptData)
+    .upsert(dataToSave)
     .select();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error saving transcript:', error);
+    throw error;
+  }
   return data;
 }
 
@@ -81,17 +91,20 @@ export async function fetchInterviews(userId: string) {
   }));
 }
 
-export async function getCustomerProfileBySessionId(session_id: string): Promise<string> {
+export async function getCustomerProfileBySessionId(session_id: string): Promise<{ customerProfile: string; learningObjectives: string[] }> {
   try {
     const { data, error } = await supabase
       .from('transcripts')
-      .select('customer_profile')
+      .select('customer_profile, objectives')
       .eq('session_id', session_id);
     if (error) throw error;
     if (!data || data.length === 0) {
       throw new Error('No transcript found for this session ID');
     }
-    return data[0].customer_profile;
+    return { 
+      customerProfile: data[0].customer_profile,
+      objectives: data[0].objectives || []
+    };
   } catch (error) {
     console.error('Error in getTranscriptBySessionId:', error);
     throw error;
@@ -133,4 +146,30 @@ export async function downloadAudio(interview: { session_id: string, id: string 
   a.click();
   window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
+}
+
+export async function saveTranscriptEvaluation(session_id: string, evaluationData: EvaluationData) {
+  // Get the current user's session
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('No authenticated session found');
+  }
+
+  const { data, error } = await supabase
+    .from('transcripts')
+    .update({
+      evaluation: evaluationData,  // This will be stored as JSONB
+      updated_at: new Date().toISOString(),
+      user_id: session.user.id  // Include user_id for RLS
+    })
+    .eq('session_id', session_id)
+    .eq('user_id', session.user.id)  // Add user_id check for RLS
+    .select('evaluation');
+
+  if (error) {
+    console.error('Error saving evaluation:', error);
+    throw error;
+  }
+
+  return data;
 }

@@ -5,8 +5,13 @@ export async function startRealtimeSession(rtcPeerConnection: RTCPeerConnection,
 
     try {
         const customerProfile = await getCustomerProfileBySessionId(session_id);
-        const encodedCustomerProfile = encodeURIComponent(customerProfile);
-        const tokenResponse = await fetch(`/api/realtime-session?customer_profile=${encodedCustomerProfile}`);
+        const tokenResponse = await fetch(`/api/realtime-session`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ customer_profile: customerProfile })
+        });
         const data = await tokenResponse.json();
         const EPHEMERAL_KEY = data.client_secret.value;
 

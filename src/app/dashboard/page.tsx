@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import NavigationHeader from "@/components/NavigationHeader";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, FileAudio, FileText, UserCircle } from "lucide-react";
+import { ArrowRight, FileAudio, FileText, UserCircle, Star, Download } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { fetchInterviews, downloadTranscript, downloadAudio } from "@/lib/supabase/supabase-utils";
 import Image from "next/image";
@@ -17,6 +17,11 @@ interface Interview {
   customer_profile: string;
   objectives: string[];
   recording_blob_url?: string;
+  evaluation?: {
+    generalAnalysis: string | null;
+    rubricAnalysis: string | null;
+    evaluatedAt: string;
+  };
   entries?: Array<{
     role: 'user' | 'assistant';
     content: string;
@@ -29,6 +34,95 @@ interface Interview {
 interface UserIdentity {
   name: string;
   picture: string;
+}
+
+// Add a new component to display evaluation data
+function EvaluationDisplay({ evaluation }: { evaluation?: Interview['evaluation'] }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (!evaluation) {
+    return <span className="text-gray-400">Not available yet</span>;
+  }
+
+  // Extract numeric grade from rubric analysis if available
+  const gradeMatch = evaluation.rubricAnalysis?.match(/Grade:\s*\*\*(\d+)\*\*/);
+  const grade = gradeMatch ? gradeMatch[1] : null;
+
+  const handleDownloadEvaluation = () => {
+    const evaluationText = `Mom Test Interview Evaluation
+
+GENERAL ANALYSIS
+${evaluation.generalAnalysis}
+
+RUBRIC ANALYSIS
+${evaluation.rubricAnalysis}
+
+Evaluated At: ${new Date(evaluation.evaluatedAt).toLocaleString()}
+`;
+
+    const blob = new Blob([evaluationText], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `evaluation-${new Date(evaluation.evaluatedAt).toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        {grade && (
+          <div className="flex items-center gap-1">
+            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+            <span className="font-semibold">{grade}/5</span>
+          </div>
+        )}
+        <div className="flex items-center gap-.5 ">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-blue-600 hover:text-blue-800 text-sm p-0 h-auto font-normal hover:bg-transparent"
+          >
+            {isExpanded ? 'Hide Feedback' : 'View Feedback'}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDownloadEvaluation}
+            className="text-blue-600 hover:text-blue-800 p-0 h-6 w-6 hover:bg-blue-100"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {isExpanded && (
+        <div className="bg-gray-50 rounded-lg p-4 space-y-4 max-w-xl">
+          <div>
+            <h3 className="font-semibold mb-2">General Analysis</h3>
+            <div className="text-sm text-gray-700 whitespace-pre-wrap">
+              {evaluation.generalAnalysis}
+            </div>
+          </div>
+          
+          <div>
+            <h3 className="font-semibold mb-2">Rubric Analysis</h3>
+            <div className="text-sm text-gray-700 whitespace-pre-wrap">
+              {evaluation.rubricAnalysis}
+            </div>
+          </div>
+
+          <div className="text-xs text-gray-500">
+            Evaluated at: {new Date(evaluation.evaluatedAt).toLocaleString()}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function DashboardPage() {
@@ -179,8 +273,9 @@ export default function DashboardPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Profile</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Objectives</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transcript</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recording</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Evaluation</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Transcript</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Recording</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -203,30 +298,35 @@ export default function DashboardPage() {
                           ))}
                         </ul>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-4 py-4 text-center">
+                        <div className="inline-block">
+                          <EvaluationDisplay evaluation={interview.evaluation} />
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-center text-sm">
                         {interview.entries ? (
                           <button
                             onClick={() => handleDownloadTranscript(interview)}
-                            className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+                            className="text-blue-600 hover:text-blue-800 inline-flex items-center gap-1"
                           >
                             <FileText className="h-4 w-4" />
                             <span>Download</span>
                           </button>
                         ) : (
-                          <span className="text-gray-400">Not available</span>
+                          <span className="text-gray-400">Not available yet</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-4 py-4 text-center text-sm">
                         {interview.recording_blob_url ? (
                           <button
                             onClick={() => handleDownloadAudio(interview)}
-                            className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+                            className="text-blue-600 hover:text-blue-800 inline-flex items-center gap-1 mx-auto"
                           >
                             <FileAudio className="h-4 w-4" />
                             <span>Download</span>
                           </button>
                         ) : (
-                          <span className="text-gray-400">Not available</span>
+                          <span className="text-gray-400">Not available yet</span>
                         )}
                       </td>
                     </tr>

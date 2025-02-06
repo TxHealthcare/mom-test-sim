@@ -1,12 +1,14 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
+const AVAILABLE_VOICES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse'];
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   try {
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    const customer_profile = req.query.customer_profile as string;
+    const { customer_profile } = req.body;
 
     if (!OPENAI_API_KEY) {
       throw new Error("Missing OpenAI API key");
@@ -23,7 +25,7 @@ export default async function handler(
       },
       body: JSON.stringify({
         model: "gpt-4o-realtime-preview-2024-12-17",
-        voice: "alloy",
+        voice: AVAILABLE_VOICES[Math.floor(Math.random() * AVAILABLE_VOICES.length)],
         instructions: `Talk quickly, be concise, have a friendly voice, here is your persona. You will be interviewed for the Mom test by our user. They expect you to take up this persona for the interview: ${customer_profile}.`,
         input_audio_format: "pcm16",
         output_audio_format: "pcm16",
