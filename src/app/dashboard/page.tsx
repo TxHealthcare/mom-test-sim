@@ -18,17 +18,17 @@ interface UserIdentity {
   picture: string;
 }
 
-// Add a new component to display evaluation data
-function EvaluationDisplay({ evaluation }: { evaluation?: EvaluationData }) {
+// Modify EvaluationDisplay to be simpler
+function EvaluationDisplay({ evaluation, isProcessing }: { evaluation?: EvaluationData, isProcessing?: boolean }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  if (!evaluation) {
-    return <span className="text-gray-400">Not available yet</span>;
+  if (isProcessing) {
+    return <span className="text-gray-500 text-sm">Processing...</span>;
   }
 
-  // Extract numeric grade from rubric analysis if available
-  const gradeMatch = evaluation.rubricAnalysis?.match(/Grade:\s*\*\*(\d+)\*\*/);
-  const grade = gradeMatch ? gradeMatch[1] : null;
+  if (!evaluation) {
+    return <span className="text-gray-400 text-sm">Not available yet</span>;
+  }
 
   const handleDownloadEvaluation = () => {
     const evaluationText = `Mom Test Interview Evaluation
@@ -56,12 +56,6 @@ Evaluated At: ${new Date(evaluation.evaluatedAt).toLocaleString()}
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        {grade && (
-          <div className="flex items-center gap-1">
-            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-            <span className="font-semibold">{grade}/5</span>
-          </div>
-        )}
         <div className="flex items-center gap-.5 ">
           <Button
             variant="ghost"
@@ -112,6 +106,7 @@ export default function DashboardPage() {
   const { user, loading } = useAuth();
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [userIdentity, setUserIdentity] = useState<UserIdentity | null>(null);
+  const [processingInterviewId, setProcessingInterviewId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -126,11 +121,56 @@ export default function DashboardPage() {
     }
   }, [user, loading, router]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Set up realtime subscription for transcript evaluations
+    const transcriptsChannel = supabase
+      .channel('transcripts-evaluations')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'transcripts',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const updatedTranscript = payload.new as Interview;
+          
+          // Update the interviews list with the new evaluation
+          setInterviews(prevInterviews => 
+            prevInterviews.map(interview => 
+              interview.id === updatedTranscript.id
+                ? { ...interview, evaluation: updatedTranscript.evaluation }
+                : interview
+            )
+          );
+
+          // Clear processing state if this was the interview being processed
+          if (updatedTranscript.id === processingInterviewId && updatedTranscript.evaluation) {
+            setProcessingInterviewId(null);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(transcriptsChannel);
+    };
+  }, [user?.id, processingInterviewId]);
+
   const loadInterviews = async () => {
     try {
       if (!user?.id) return;
       const data = await fetchInterviews(user.id);
       setInterviews(data || []);
+      
+      // Check if the most recent interview needs processing
+      const mostRecent = data?.[0];
+      if (mostRecent?.id && mostRecent.entries?.length && !mostRecent.evaluation) {
+        setProcessingInterviewId(mostRecent.id);
+      }
     } catch (error) {
       console.error('Error loading interviews:', error);
     }
@@ -297,7 +337,10 @@ export default function DashboardPage() {
                       </td>
                       <td className="px-4 py-4 text-center">
                         <div className="inline-block">
-                          <EvaluationDisplay evaluation={interview.evaluation} />
+                          <EvaluationDisplay 
+                            evaluation={interview.evaluation} 
+                            isProcessing={interview.id === processingInterviewId}
+                          />
                         </div>
                       </td>
                       <td className="px-4 py-4 text-center text-sm">
