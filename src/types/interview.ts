@@ -11,14 +11,14 @@ export interface EvaluationData {
 }
 
 export interface Interview {
-  id: string;
-  user_id: string;
-  session_id: string;
-  customer_profile: string;
-  objectives: string[];
+  id?: string;
+  user_id?: string;
+  session_id?: string;
+  customer_profile?: string;
+  objectives?: string[];
   recording_blob_url?: string;
   evaluation?: EvaluationData;
   entries?: Array<TranscriptEntry>;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }

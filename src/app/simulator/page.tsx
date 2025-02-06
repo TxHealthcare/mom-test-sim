@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { saveTranscript, uploadRecordingBlob, getCustomerProfileBySessionId } from "@/lib/supabase/supabase-utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { TranscriptEntry, EvaluationData } from "@/types/interview";
+import { TranscriptEntry, EvaluationData, Interview } from "@/types/interview";
 import {
   Tooltip,
   TooltipContent,
@@ -36,9 +36,7 @@ function SimulatorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const session_id = searchParams?.get('session_id') ?? null;
-  const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
-  const [customerProfile, setCustomerProfile] = useState<string>('');
-  const [learningObjectives, setLearningObjectives] = useState<string[]>([]);
+  const [interview, setInterview] = useState<Interview | null>({});
   const { user, loading } = useAuth();
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -67,10 +65,17 @@ function SimulatorContent() {
   // Fetch customer profile when session_id changes
   useEffect(() => {
     if (session_id) {
+      setInterview({
+        ...interview,
+        session_id: session_id
+      });
       getCustomerProfileBySessionId(session_id)
         .then(({ customerProfile, learningObjectives }) => {
-          setCustomerProfile(customerProfile);
-          setLearningObjectives(learningObjectives);
+          setInterview({
+            ...interview,
+            customer_profile: customerProfile,
+            objectives: learningObjectives
+          });
         })
         .catch((error: Error) => console.error('Error fetching data:', error));
     }
@@ -177,8 +182,8 @@ function SimulatorContent() {
         id: session_id,
         user_id: user.id,
         session_id,
-        entries: transcript,
-        customer_profile: customerProfile,
+        entries: interview?.entries,
+        customer_profile: interview?.customer_profile,
         updated_at: currentTime
       };
 
@@ -205,10 +210,10 @@ function SimulatorContent() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            transcript,
+            transcript: interview?.entries,
             session_id,
-            customer_profile: customerProfile,
-            learningObjectives: learningObjectives
+            customer_profile: interview?.customer_profile,
+            learningObjectives: interview?.objectives
           })
         })
           .then(res => {
@@ -292,7 +297,10 @@ function SimulatorContent() {
         content: event.input_audio_transcription,
         timestamp: Date.now()
       };
-      setTranscript(prev => [...prev, userEntry]);
+      setInterview(prev => ({
+        ...prev,
+        entries: [...(prev?.entries || []), userEntry]
+      }));
     }
 
     // Track assistant responses
@@ -302,7 +310,10 @@ function SimulatorContent() {
         content: event.output[0].content[0].transcript,
         timestamp: Date.now()
       };
-      setTranscript(prev => [...prev, assistantEntry]);
+      setInterview(prev => ({
+        ...prev,
+        entries: [...(prev?.entries || []), assistantEntry]
+      }));
     }
 
     // Additional transcript checks
@@ -312,7 +323,10 @@ function SimulatorContent() {
         content: event.transcript,
         timestamp: Date.now()
       };
-      setTranscript(prev => [...prev, entry]);
+      setInterview(prev => ({
+        ...prev,
+        entries: [...(prev?.entries || []), entry]
+      }));
     }
 
     // Check for text field
@@ -322,7 +336,10 @@ function SimulatorContent() {
         content: event.text,
         timestamp: Date.now()
       };
-      setTranscript(prev => [...prev, entry]);
+      setInterview(prev => ({
+        ...prev,
+        entries: [...(prev?.entries || []), entry]
+      }));
     }
   }, []);
 

@@ -138,7 +138,14 @@ export default function DashboardPage() {
 
   const handleDownloadTranscript = async (interview: Interview) => {
     try {
-      await downloadTranscript(interview);
+      if (!interview.id) {
+        console.error('Interview has no id');
+        return;
+      }
+      await downloadTranscript({
+        id: interview.id,
+        entries: interview.entries
+      });
     } catch (error) {
       console.error('Error downloading transcript:', error);
     }
@@ -146,8 +153,18 @@ export default function DashboardPage() {
 
   const handleDownloadAudio = async (interview: Interview) => {
     try {
-      if (!user?.id) return;
-      await downloadAudio(interview, user.id);
+      if (!user?.id) {
+        console.error('User has no id');
+        return;
+      }
+      if (!interview.session_id || !interview.id) {
+        console.error('Interview has no session_id or id');
+        return;
+      }
+      await downloadAudio({
+        session_id: interview.session_id,
+        id: interview.id
+      }, user.id);
     } catch (error) {
       console.error('Error downloading audio:', error);
     }
@@ -262,7 +279,7 @@ export default function DashboardPage() {
                   {interviews.map((interview) => (
                     <tr key={interview.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(interview.created_at)}
+                        {formatDate(interview?.created_at || '')}
                       </td>
                       <td className="px-6 py-4">
                         <div className="max-w-xs">
