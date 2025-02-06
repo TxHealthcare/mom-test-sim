@@ -18,7 +18,7 @@ export async function uploadRecordingBlob(blob: Blob, session_id: string): Promi
     }
 
     const fileName = `${session.user.id}/${session_id}.webm`;
-    const { data: uploadData, error: uploadError } = await supabase
+    const { error: uploadError } = await supabase
       .storage
       .from('mom-test-blobs')
       .upload(fileName, blob, {
@@ -103,7 +103,7 @@ export async function getCustomerProfileBySessionId(session_id: string): Promise
     }
     return { 
       customerProfile: data[0].customer_profile,
-      objectives: data[0].objectives || []
+      learningObjectives: data[0].objectives || []
     };
   } catch (error) {
     console.error('Error in getTranscriptBySessionId:', error);
