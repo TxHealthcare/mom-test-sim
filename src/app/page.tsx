@@ -1,17 +1,8 @@
 "use client";
 
 import React from 'react';
-import { ArrowRight, Check, MessageCircle, BarChart3, Settings2 } from 'lucide-react';
-import RealtimeChat from '../components/RealtimeChat'
+import { ArrowRight, MessageCircle, BarChart3, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu";
-import { AuthButton } from '@/components/AuthHeader'
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
