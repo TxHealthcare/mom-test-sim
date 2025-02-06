@@ -31,6 +31,7 @@ interface MicrophoneState {
 }
 
 let didRequestInitialMic = false;
+let localStreamInitialized = false;
 
 // Component that uses useSearchParams
 function SimulatorContent() {
@@ -58,7 +59,8 @@ function SimulatorContent() {
     startRecording,
     pauseRecording,
     resumeRecording,
-    stopRecording
+    stopRecording,
+    isRecorderInitialized
   } = useRecorder({
     stream: mergedStream
   });
@@ -113,11 +115,12 @@ function SimulatorContent() {
 
     try {
       if (!isRecording) {
-        if (peerConnection && hasStartedRecording) {
+        if (peerConnection) {
           // Resume conversation
           toggleTracks(true);
-          await resumeRecording();
+          isRecorderInitialized() ? resumeRecording() : startRecording();
           setIsRecording(true);
+          setHasStartedRecording(true);
         } else if (!peerConnection && !hasStartedRecording) {
           // Start new conversation
           const pc = new RTCPeerConnection();
@@ -307,6 +310,30 @@ function SimulatorContent() {
     }
   }, []);
 
+  // Proactively starting RTC session if possible.
+  useEffect(() => {
+    const startRTConnection = async () => {
+    if (localStream && session_id && !localStreamInitialized && !peerConnection) {
+        // start new converstaion 
+        if (localStream) {
+          const pc = new RTCPeerConnection();
+          const { dataChannel } = await startRealtimeSession(pc, session_id);
+          [...pc.getSenders(), ...pc.getReceivers()]
+          .forEach(transceiver => {
+            if (transceiver.track) {
+              transceiver.track.enabled = false;
+            }
+            });
+          setPeerConnection(pc);
+          setDataChannel(dataChannel);
+        }
+
+        localStreamInitialized = true;
+      }
+    }
+    startRTConnection();
+  }, [localStream]);
+
   const requestMicrophoneAccess = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -404,11 +431,11 @@ function SimulatorContent() {
                         variant="outline"
                         size="default"
                         className={`bg-red-600 hover:bg-red-700 transition-all duration-300 ${
-                          !!peerConnection
+                          hasStartedRecording && !!peerConnection
                             ? "h-10 w-10 rounded-lg" 
                             : "h-16 w-16 rounded-full"
                         }`}
-                        onClick={!!peerConnection ? handleFinishConversation : handleRecordingToggle}
+                        onClick={(hasStartedRecording && !!peerConnection) ? handleFinishConversation : handleRecordingToggle}
                         disabled={microphoneState.isBlocked}
                       />
                     </div>

@@ -15,6 +15,7 @@ interface UseRecorderReturn {
   pauseRecording: () => Promise<void>;
   resumeRecording: () => void;
   stopRecording: () => Promise<Blob | null>;
+  isRecorderInitialized: () => boolean;
 }
 
 export function useRecorder({ stream }: UseRecorderProps): UseRecorderReturn {
@@ -63,10 +64,15 @@ export function useRecorder({ stream }: UseRecorderProps): UseRecorderReturn {
     }
   };
 
+  const isRecorderInitialized = () => {
+    return !!recorderRef.current;
+  };
+
   return {
     startRecording,
     pauseRecording,
     resumeRecording,
     stopRecording,
+    isRecorderInitialized,
   };
 } 
