@@ -62,7 +62,7 @@ function SimulatorContent() {
     stream: mergedStream
   });
 
-  // Fetch customer profile when session_id changes
+  // Fetch customer profile and learning objectives when session_id changes
   useEffect(() => {
     if (session_id) {
       setInterview({
@@ -196,7 +196,6 @@ function SimulatorContent() {
         // Upload recording
         uploadRecordingBlob(blob, session_id)
           .then(async (publicUrl) => {
-            // Update with recording URL - include user_id for RLS
             return saveTranscript({
               id: session_id,
               user_id: user.id,
@@ -204,54 +203,60 @@ function SimulatorContent() {
             });
           })
           .catch(error => console.error('Error saving recording URL:', error)),
-
+        
         // Run analysis in parallel
-        fetch('/api/analyze-transcript', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            transcript: interview?.entries,
-            session_id,
-            customer_profile: interview?.customer_profile,
-            learningObjectives: interview?.objectives
-          })
-        })
-          .then(res => {
-            if (!res.ok) {
-              throw new Error('Analysis failed');
-            }
-            return res.json();
-          })
-          .then(async (analysis) => {
-            console.log('Transcript analysis:', analysis);
-            // Save the evaluation data - include user_id for RLS
-            const evaluationData: EvaluationData = {
-              generalAnalysis: analysis.generalAnalysis || null,
-              rubricAnalysis: analysis.rubricAnalysis || null,
-              evaluatedAt: analysis.evaluatedAt
-            };
+        (async () => {  
+          if (!interview?.customer_profile?.trim()) {
+            console.error('Customer profile is empty');
+            return;
+          }
+          
+          if (!interview?.objectives?.length || !interview.objectives.some(obj => obj.trim())) {
+            console.error('No valid learning objectives found');
+            return;
+          }
 
-            // Update with evaluation - include user_id for RLS
-            const transcriptUpdate = {
-              id: session_id,
-              user_id: user.id,
+          return fetch('/api/analyze-transcript', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              transcript: interview?.entries,
               session_id,
-              evaluation: evaluationData
-            };
+              customer_profile: interview?.customer_profile,
+              learningObjectives: interview?.objectives
+            })
+          })
+            .then(res => {
+              if (!res.ok) {
+                throw new Error('Analysis failed');
+              }
+              return res.json();
+            })
+            .then(async (analysis) => {
+              // Save the evaluation data - include user_id for RLS
+              const evaluationData: EvaluationData = {
+                generalAnalysis: analysis.generalAnalysis || null,
+                rubricAnalysis: analysis.rubricAnalysis || null,
+                evaluatedAt: analysis.evaluatedAt
+              };
 
-            console.log('Saving evaluation data:', transcriptUpdate);
-            return saveTranscript(transcriptUpdate);
-          })
-          .then(data => {
-            console.log('Evaluation saved successfully:', data);
-          })
-          .catch(error => {
-            console.error('Error analyzing or saving transcript:', error);
-          })
+              // Update with evaluation - include user_id for RLS
+              const transcriptUpdate = {
+                id: session_id,
+                user_id: user.id,
+                session_id,
+                evaluation: evaluationData
+              };
+
+              return saveTranscript(transcriptUpdate);
+            })
+            .catch(error => {
+              console.error('Error analyzing or saving transcript:', error);
+            });
+        })()
       ])
       .then(() => {
         // All background tasks completed successfully
-        console.log('All data saved successfully');
         // Force refresh the dashboard page
         router.refresh();
       })
