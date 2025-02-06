@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { saveTranscript, uploadRecordingBlob, getCustomerProfileBySessionId } from "@/lib/supabase/supabase-utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { TranscriptEntry, EvaluationData, Interview } from "@/types/interview";
+import { EvaluationData, Interview } from "@/types/interview";
 import {
   Tooltip,
   TooltipContent,
@@ -19,6 +19,7 @@ import { useAudioMixer } from "@/hooks/useAudioMixer";
 import { useRecorder } from "@/hooks/useRecorder";
 import { useSearchParams, useRouter } from "next/navigation";
 import { RealtimeEvent } from "@/types/realtime";
+import { processTranscriptEvent } from "./transcript-manager";
 
 const AudioVisualizer = dynamic(() => import('@/components/AudioVisualizer'), {
   ssr: false
@@ -295,57 +296,7 @@ function SimulatorContent() {
 
   // Modify processEvent function to track transcript
   const processEvent = useCallback((event: RealtimeEvent) => {
-    // Track user input from audio transcription
-    if (event.input_audio_transcription) {
-      const userEntry: TranscriptEntry = {
-        role: 'user',
-        content: event.input_audio_transcription,
-        timestamp: Date.now()
-      };
-      setInterview(prev => ({
-        ...prev,
-        entries: [...(prev?.entries || []), userEntry]
-      }));
-    }
-
-    // Track assistant responses
-    if (event?.output?.[0]?.content?.[0]?.transcript) {
-      const assistantEntry: TranscriptEntry = {
-        role: 'assistant',
-        content: event.output[0].content[0].transcript,
-        timestamp: Date.now()
-      };
-      setInterview(prev => ({
-        ...prev,
-        entries: [...(prev?.entries || []), assistantEntry]
-      }));
-    }
-
-    // Additional transcript checks
-    if (event.transcript) {
-      const entry: TranscriptEntry = {
-        role: event.type.includes('input') ? 'user' : 'assistant',
-        content: event.transcript,
-        timestamp: Date.now()
-      };
-      setInterview(prev => ({
-        ...prev,
-        entries: [...(prev?.entries || []), entry]
-      }));
-    }
-
-    // Check for text field
-    if (event.text) {
-      const entry: TranscriptEntry = {
-        role: event.type.includes('input') ? 'user' : 'assistant',
-        content: event.text,
-        timestamp: Date.now()
-      };
-      setInterview(prev => ({
-        ...prev,
-        entries: [...(prev?.entries || []), entry]
-      }));
-    }
+    processTranscriptEvent(event, setInterview);
   }, []);
 
   // Immediately request mic access after page load to reduce error state chances.
