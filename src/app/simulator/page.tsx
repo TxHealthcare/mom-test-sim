@@ -360,14 +360,6 @@ function SimulatorContent() {
     }
   };
 
-  // Redirect if no session_id
-  useEffect(() => {
-    if (!session_id) {
-      router.push('/simulator-onboarding');
-      return;
-    }
-  }, [session_id, router]);
-
   if (loading) {
     return <div className="dark flex items-center justify-center h-screen">Loading...</div>;
   }
