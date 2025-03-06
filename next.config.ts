@@ -1,6 +1,20 @@
+// next.config.ts
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
+          },
+        ],
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {
@@ -13,8 +27,6 @@ const nextConfig: NextConfig = {
   },
   output: 'standalone',
   eslint: {
-    // Warning: Allows production builds to successfully complete even if
-    // project has ESLint errors.
     ignoreDuringBuilds: true,
   },
 };
